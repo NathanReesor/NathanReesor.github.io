@@ -4,21 +4,55 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Nathan Reesor</title>
+
+  <!-- Font: clean + modern -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <main>
-    <h1>Nathan Reesor</h1>
-    <p>
-      Finance graduate interested in markets, automation, and data.
-      Building clean systems and learning every day.
-    </p>
+  <div class="bg">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="grain" aria-hidden="true"></div>
+  </div>
 
-    <div class="links">
-      <a href="https://github.com/NathanReesor" target="_blank">GitHub</a>
-      <a href="https://linkedin.com/in/nathan-reesor" target="_blank">LinkedIn</a>
-      <a href="mailto:you@email.com">Email</a>
-    </div>
+  <main class="wrap">
+    <section class="card">
+      <div class="top">
+        <div class="badge">Waterloo • Finance • Systems</div>
+        <div class="status">
+          <span class="dot"></span>
+          <span>Available for roles</span>
+        </div>
+      </div>
+
+      <h1 class="name">Nathan Reesor</h1>
+
+      <p class="bio">
+        I build clean, automated workflows and I’m obsessed with markets, data, and elegant systems.
+        Currently focused on <span class="highlight">finance</span>, <span class="highlight">automation</span>, and <span class="highlight">Bitcoin</span>.
+      </p>
+
+      <div class="cta">
+        <a class="btn primary" href="https://linkedin.com/in/YOUR-LINK" target="_blank" rel="noreferrer">LinkedIn</a>
+        <a class="btn" href="https://github.com/NathanReesor" target="_blank" rel="noreferrer">GitHub</a>
+        <a class="btn" href="mailto:you@email.com">Email</a>
+      </div>
+
+      <div class="footer">
+        <span class="mono">nathanreesor.github.io</span>
+        <span class="sep">•</span>
+        <a class="subtle" href="#" onclick="navigator.clipboard.writeText(window.location.href); return false;">copy link</a>
+      </div>
+    </section>
+
+    <p class="tiny">
+      Built on GitHub Pages. Minimal by design.
+    </p>
   </main>
 </body>
 </html>
