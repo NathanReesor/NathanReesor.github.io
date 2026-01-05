@@ -1,6 +1,5 @@
 <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="NR logo">
   <rect width="64" height="64" rx="16" fill="#0B1224"/>
   <rect x="3" y="3" width="58" height="58" rx="14" stroke="#38BDF8" stroke-width="2"/>
-  <path d="M20 42V22H26.2L37.1 35.6V22H44V42H37.8L26.9 28.4V42H20Z" fill="#E2E8F0"/>
-  <path d="M44 42V36.2H48.5C50.4 36.2 51.6 35.2 51.6 33.6C51.6 32 50.4 31 48.5 31H44V25.2H49C54 25.2 57.5 28 57.5 33.6C57.5 39.2 54 42 49 42H44Z" fill="#E2E8F0"/>
+  <text x="32" y="41" text-anchor="middle" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="24" font-weight="700" fill="#E2E8F0">NR</text>
 </svg>
