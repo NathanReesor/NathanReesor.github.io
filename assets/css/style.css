@@ -144,6 +144,42 @@ a {
   margin-top: 2rem;
 }
 
+.wheel {
+  margin-top: 2rem;
+  overflow: hidden;
+}
+
+.wheel-track {
+  display: flex;
+  gap: 1.5rem;
+  width: max-content;
+  animation: wheel-scroll 40s linear infinite;
+}
+
+.wheel:hover .wheel-track {
+  animation-play-state: paused;
+}
+
+.wheel-card {
+  min-width: 260px;
+  max-width: 280px;
+  flex: 0 0 260px;
+}
+
+.post-date {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+@keyframes wheel-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
 .card {
   background: var(--card);
   padding: 1.5rem;
@@ -219,5 +255,23 @@ a {
   .hero-actions {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .wheel {
+    overflow-x: auto;
+  }
+
+  .wheel-track {
+    animation: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wheel {
+    overflow-x: auto;
+  }
+
+  .wheel-track {
+    animation: none;
   }
 }
