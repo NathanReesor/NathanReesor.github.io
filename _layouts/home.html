@@ -34,14 +34,6 @@ layout: default
             <a class="text-link" href="{{ post.url | relative_url }}">Read more →</a>
           </article>
         {% endfor %}
-        {% for post in site.posts %}
-          <article class="card wheel-card" aria-hidden="true">
-            <p class="post-date">{{ post.date | date: '%b %d, %Y' }}</p>
-            <h3><a href="{{ post.url | relative_url }}">{{ post.title }}</a></h3>
-            <p>{{ post.excerpt | strip_html | truncate: 140 }}</p>
-            <a class="text-link" href="{{ post.url | relative_url }}">Read more →</a>
-          </article>
-        {% endfor %}
       </div>
     </div>
   </div>
