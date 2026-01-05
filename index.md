@@ -6,10 +6,9 @@ tagline: |-
   Equity valuation and investment research with a macro lens.
   CFA Level I candidate. Writing to think clearly and share the work.
 about: |-
-  I’m a CFA Level I candidate focused on investment research and valuation. This
-  site is my portfolio of projects and market notes—built to be concise,
-  testable, and useful. Outside core equity work, I’m a “macro tourist” by habit:
-  I follow cross-asset signals and narratives to sharpen context.
+  I’m a CFA Level I candidate focused on investment research and valuation. 
+  I publish write-ups, models, and notes as I learn in public. I’m a macro tourist in the best sense: 
+  I explore narratives and data across markets, then translate them into decision-ready insights.
 
   - Valuation & modeling (DCF, comps, sensitivity/scenarios)
   - Research process (variant view, catalysts, risk framing)
