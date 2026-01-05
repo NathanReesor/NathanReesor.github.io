@@ -73,13 +73,13 @@ a {
 }
 
 .hero {
-  padding: 5rem 0 4rem;
+  padding: 4.5rem 0 3.5rem;
   background: radial-gradient(circle at top, rgba(56, 189, 248, 0.25), transparent 55%);
 }
 
 .hero h1 {
-  font-size: clamp(2.5rem, 5vw, 3.75rem);
-  margin-bottom: 1rem;
+  font-size: clamp(2.4rem, 4.5vw, 3.4rem);
+  margin-bottom: 0.75rem;
 }
 
 .eyebrow {
@@ -87,13 +87,14 @@ a {
   letter-spacing: 0.2em;
   font-size: 0.75rem;
   color: var(--muted);
+  margin-bottom: 0.5rem;
 }
 
 .subtitle {
-  font-size: 1.1rem;
+  font-size: 1rem;
   color: var(--muted);
-  max-width: 520px;
-  margin-bottom: 2rem;
+  max-width: 480px;
+  margin-bottom: 1.5rem;
 }
 
 .hero-actions {
@@ -117,6 +118,15 @@ a {
 .button:hover {
   background: var(--accent-dark);
   transform: translateY(-1px);
+}
+
+.button.secondary {
+  background: rgba(148, 163, 184, 0.16);
+  color: var(--text);
+}
+
+.button.secondary:hover {
+  background: rgba(148, 163, 184, 0.24);
 }
 
 .button.ghost {
@@ -241,11 +251,103 @@ a {
   color: var(--muted);
   font-size: 0.85rem;
   margin: 0.5rem 0 1rem;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.post-header {
+  display: grid;
+  gap: 0.25rem;
+  margin-bottom: 1.5rem;
+  max-width: 740px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.back-link {
+  display: inline-flex;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  max-width: 740px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .post-content {
   display: grid;
   gap: 1rem;
+  max-width: 740px;
+  line-height: 1.8;
+  font-size: 1.05rem;
+  margin: 0 auto;
+}
+
+.post-content h2,
+.post-content h3,
+.post-content h4 {
+  margin-top: 1.5rem;
+}
+
+.post-content p {
+  color: var(--text);
+}
+
+.post-content code {
+  font-family: "JetBrains Mono", "Fira Code", SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", monospace;
+  font-size: 0.95em;
+  background: rgba(148, 163, 184, 0.15);
+  padding: 0.2em 0.35em;
+  border-radius: 0.35em;
+}
+
+.post-content pre {
+  background: var(--surface);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  padding: 1.25rem;
+  border-radius: 0.75rem;
+  overflow-x: auto;
+}
+
+.post-content pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 0.95rem;
+  color: inherit;
+}
+
+.post-nav {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+  display: grid;
+  gap: 1rem;
+  max-width: 740px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.post-nav-link {
+  display: grid;
+  gap: 0.25rem;
+  padding: 1rem 1.25rem;
+  border-radius: 0.9rem;
+  background: var(--card);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  transition: border 0.2s ease, transform 0.2s ease;
+}
+
+.post-nav-link:hover {
+  border-color: rgba(56, 189, 248, 0.6);
+  transform: translateY(-1px);
+}
+
+.post-nav-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .site-footer {

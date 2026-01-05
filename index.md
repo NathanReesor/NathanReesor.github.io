@@ -2,6 +2,7 @@
 layout: home
 hero_name: Nathan Reesor
 title: Home
+
 tagline: Exploring finance, markets, and investment analysis.
 about: |-
   I am a Level II CFA candidate focused on equity research and valuation, building models that translate business fundamentals into clear investment views.
@@ -18,6 +19,7 @@ about: |-
   - Valuation
   - Macro notes
   - Automation
+
 contact: >-
   Want to collaborate or just say hi? Reach out on any platform below.
 links:
