@@ -2,6 +2,7 @@ title: "Nathan Reesor"
 description: "Portfolio and blog"
 url: "https://nathanreesor.github.io"
 baseurl: ""
+og_image: "/assets/images/nr-logo.svg"
 markdown: kramdown
 permalink: /blog/:year/:month/:day/:title/
 collections:
