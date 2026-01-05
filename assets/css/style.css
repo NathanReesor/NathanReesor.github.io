@@ -150,9 +150,12 @@ a {
 
 .about-content ul {
   list-style: disc;
-  padding-left: 1.5rem;
-  display: grid;
-  gap: 0.5rem;
+  padding-left: 1.25rem;
+  margin: 0;
+}
+
+.about-content li {
+  margin: 0.5rem 0;
 }
 
 .grid {
