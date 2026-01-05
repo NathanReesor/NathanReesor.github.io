@@ -2,7 +2,8 @@
 layout: home
 hero_name: Nathan Reesor
 title: Home
-tagline: Independent investment research focused on equity valuation, market dynamics, and portfolio signals.
+tagline: Equity valuation and investment research with a macro lens.
+CFA Level I candidate. Writing to think clearly and share the work.
 about: >-
   I am a Level II CFA candidate focused on investment research, valuation, and
   financial modeling. This space serves as my portfolio and a place to share
