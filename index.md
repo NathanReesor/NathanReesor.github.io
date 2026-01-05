@@ -2,7 +2,7 @@
 layout: home
 hero_name: Nathan Reesor
 title: Home
-tagline: Exploring finance, markets, and investment analysis.
+tagline: Independent investment research focused on equity valuation, market dynamics, and portfolio signals.
 about: >-
   I am a Level II CFA student focused on investment research, valuation, and
   financial modeling. This space is my portfolio and a place to share market
