@@ -1,0 +1,10 @@
+title: "Nathan Reesor"
+description: "Portfolio and blog"
+url: "https://nathanreesor.github.io"
+baseurl: ""
+markdown: kramdown
+permalink: /blog/:year/:month/:day/:title/
+collections:
+  posts:
+    output: true
+    permalink: /blog/:year/:month/:day/:title/
