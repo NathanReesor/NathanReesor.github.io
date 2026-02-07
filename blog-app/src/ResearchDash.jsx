@@ -210,7 +210,7 @@ const Lbl = ({ children }) => <div style={{ fontSize: 10, fontWeight: 800, fontF
 const Stat = ({ l, v, sub, c }) => (<div style={{ background: C.hi, borderRadius: 4, padding: "8px 10px" }}><div style={{ fontSize: 7, fontFamily: "'IBM Plex Mono', monospace", color: C.dm, letterSpacing: 1, textTransform: "uppercase" }}>{l}</div><div style={{ fontSize: 17, fontWeight: 800, color: c || C.tx, marginTop: 2 }}>{v}</div>{sub && <div style={{ fontSize: 8, color: C.dm, marginTop: 1 }}>{sub}</div>}</div>);
 const Pill = ({ v, good }) => <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 10, fontSize: 9, fontWeight: 700, background: good ? "#dff0df" : "#fde8e3", color: good ? C.g : C.r }}>{v}</span>;
 
-export default function App() {
+export default function ResearchDash() {
   const [sel, setSel] = useState("NXE");
   const [tab, setTab] = useState("overview");
   const [corrMode, setCorrMode] = useState("pct");
