@@ -45,10 +45,15 @@ jobs:
 
       - name: Replace /blog with React build
         run: |
-          rm -rf ./_site/blog
+          # Jekyll build can leave root-owned / read-only files in _site (container output)
+          sudo chown -R $(id -u):$(id -g) ./_site || true
+          sudo chmod -R u+rwX ./_site || true
+
+          sudo rm -rf ./_site/blog
           mkdir -p ./_site/blog
           cp -R ./blog-app/dist/* ./_site/blog/
           touch ./_site/.nojekyll
+
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
