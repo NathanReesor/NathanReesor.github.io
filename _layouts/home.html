@@ -9,7 +9,7 @@ layout: default
     <p class="subtitle">{{ page.tagline }}</p>
     <div class="hero-actions">
       <a class="button" href="{{ '/assets/Nathan-Reesor-Resume.pdf' | relative_url }}">Resume</a>
-      <a class="button secondary" href="{{ '/blog/' | relative_url }}">Blog</a>
+      <a class="button secondary" href="{{ '/blog/' | relative_url }}">Equity dashboard</a>
     </div>
   </div>
 </section>
@@ -18,24 +18,6 @@ layout: default
   <div class="container">
     <h2>About</h2>
     <div class="about-content">{{ page.about | markdownify }}</div>
-  </div>
-</section>
-
-<section class="section alt">
-  <div class="container">
-    <h2>Projects</h2>
-    <div class="wheel" aria-label="Latest blog posts">
-      <div class="wheel-track">
-        {% for post in site.posts %}
-          <article class="card wheel-card">
-            <p class="post-date">{{ post.date | date: '%b %d, %Y' }}</p>
-            <h3><a href="{{ post.url | relative_url }}">{{ post.title }}</a></h3>
-            <p>{{ post.excerpt | strip_html | truncate: 140 }}</p>
-            <a class="text-link" href="{{ post.url | relative_url }}">Read more →</a>
-          </article>
-        {% endfor %}
-      </div>
-    </div>
   </div>
 </section>
 
