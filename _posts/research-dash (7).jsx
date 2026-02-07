@@ -245,7 +245,7 @@ export default function App() {
   const tabs = ["overview", "options signals", "sedar sentiment", "short interest", "insider signals", "volume signals", "data sources"];
 
   return (
-    <div style={{ fontFamily: "'Newsreader', Georgia, serif", background: C.bg, color: C.tx, minHeight: "100vh", padding: "20px 24px", maxWidth: 1100, margin: "0 auto" }}>
+    <div style={{ fontFamily: "'Newsreader', Georgia, serif", background: C.bg, color: C.tx, minHeight: "100vh", padding: "20px 24px", maxWidth: 1100, margin: "0 auto", zoom: "150%" }}>
       {/* HEADER */}
       <div style={{ borderBottom: "3px double #2a2623", paddingBottom: 8, marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
