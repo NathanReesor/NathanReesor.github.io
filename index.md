@@ -18,7 +18,7 @@ contact: >-
   Want to collaborate or just say hi? Reach out on any platform below.
 links:
   - label: Email
-    url: mailto:hello@nathanreesor.com
+    url: mailto:nathanreesor01@gmail.com
   - label: LinkedIn
     url: https://www.linkedin.com/in/nathan-reesor
 ---
