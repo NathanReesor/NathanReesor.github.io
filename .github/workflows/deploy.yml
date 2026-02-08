@@ -34,6 +34,12 @@ jobs:
         working-directory: blog-app
         run: npm run build
 
+      - name: Verify blog-app data assets
+        run: |
+          test -f blog-app/dist/data/nxe_sedar.json
+          test -f blog-app/dist/data/gold_sedar.json
+          test -f blog-app/dist/data/txg_sedar.json
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
@@ -51,7 +57,7 @@ jobs:
 
           sudo rm -rf ./_site/blog-app
           mkdir -p ./_site/blog-app
-          cp -R ./blog-app/dist/* ./_site/blog-app/
+          cp -R ./blog-app/dist/. ./_site/blog-app/
           touch ./_site/.nojekyll
 
 
