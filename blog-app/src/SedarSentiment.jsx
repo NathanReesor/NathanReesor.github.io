@@ -17,12 +17,12 @@ const CAT_META = {
 const CATS = ["neg","pos","unc","lit","constr"];
 const MIN_WORDS = 500;
 
-const DT_LABELS = { interim_mda:"Interim MD&A", annual_mda:"Annual MD&A", interim_fs:"Interim FS", annual_fs:"Annual FS", aif:"AIF", mcr:"Material Change", news_release:"News Release" };
+const DT_LABELS = { interim_mda:"Interim MD&A", annual_mda:"Annual MD&A", interim_fs:"Interim FS", annual_fs:"Annual FS", aif:"AIF", mcr:"Material Change", news_release:"News Release", annual_combined:"Annual Combined", interim_combined:"Quarterly Combined" };
 
 const DOC_GROUPS = {
+  periodic: { label:"All Periodic", types:["interim_mda","annual_mda","interim_fs","annual_fs","aif"], combined:true },
   mda:  { label:"MD&A",       types:["interim_mda","annual_mda"] },
   fs:   { label:"Fin. Stmts", types:["interim_fs","annual_fs"] },
-  periodic: { label:"All Periodic", types:["interim_mda","annual_mda","interim_fs","annual_fs","aif"] },
   news: { label:"News/MCR",   types:["news_release","mcr"] },
 };
 
@@ -153,7 +153,7 @@ function ResearchTooltip({ active, payload, metric }) {
    MAIN COMPONENT
    ═══════════════════════════════════════════════════ */
 export default function SedarSentiment({ rawJson, priceData, ticker, tickerDisplay }) {
-  const [docGroup, setDocGroup] = useState("mda");
+  const [docGroup, setDocGroup] = useState("periodic");
   const [metric, setMetric] = useState("composite");
   const [view, setView] = useState("priceTone");
   const [toneMode, setToneMode] = useState("delta");
@@ -166,9 +166,53 @@ export default function SedarSentiment({ rawJson, priceData, ticker, tickerDispl
   if (!data || data.timeline.length === 0) return <Card style={{textAlign:"center",padding:40}}><div style={{fontSize:13,fontWeight:700}}>No SEDAR+ sentiment data for {tickerDisplay}.</div></Card>;
 
   const availGroups = Object.entries(DOC_GROUPS).filter(([,{types}]) => types.some(dt => data.byDocType[dt]?.length>0)).map(([k])=>k);
-  const effGroup = availGroups.includes(docGroup) ? docGroup : availGroups[0]||"mda";
+  const effGroup = availGroups.includes(docGroup) ? docGroup : availGroups[0]||"periodic";
   const groupTypes = DOC_GROUPS[effGroup].types;
-  const filtered = data.timeline.filter(t => groupTypes.includes(t.doc_type)).sort((a,b) => a.period.localeCompare(b.period));
+  const isCombined = DOC_GROUPS[effGroup].combined;
+  const rawFiltered = data.timeline.filter(t => groupTypes.includes(t.doc_type)).sort((a,b) => a.period.localeCompare(b.period));
+
+  // For "All Periodic": aggregate by period — weighted average of filings for the same quarter
+  // MD&A 50%, FS 30%, AIF 20%
+  let filtered;
+  if (isCombined && rawFiltered.length > 0) {
+    const byPeriod = {};
+    for (const t of rawFiltered) { (byPeriod[t.period]??=[]).push(t); }
+    const W = { interim_mda:0.5, annual_mda:0.5, interim_fs:0.3, annual_fs:0.3, aif:0.2 };
+    filtered = Object.entries(byPeriod).sort(([a],[b]) => a.localeCompare(b)).map(([period, rows]) => {
+      let wSum = 0, wTotal = 0;
+      const agg = { period, doc_type: rows.length >= 3 ? "annual_combined" : "interim_combined",
+        curr_words: 0, prev_words: 0, reliable: true, expansion_pct: 0,
+        sentences_added: 0, sentences_removed: 0 };
+      for (const c of CATS) { agg[`d_${c}`] = 0; agg[`l_${c}`] = 0; agg[`lp_${c}`] = 0; }
+      agg.composite_delta = 0;
+      for (const r of rows) {
+        const w = W[r.doc_type] || 0.2;
+        wTotal += w;
+        agg.composite_delta += r.composite_delta * w;
+        agg.curr_words += r.curr_words;
+        agg.prev_words += r.prev_words;
+        agg.sentences_added += r.sentences_added;
+        agg.sentences_removed += r.sentences_removed;
+        if (!r.reliable) agg.reliable = false;
+        for (const c of CATS) {
+          agg[`d_${c}`] += r[`d_${c}`] * w;
+          agg[`l_${c}`] += r[`l_${c}`] * w;
+          agg[`lp_${c}`] += r[`lp_${c}`] * w;
+        }
+      }
+      if (wTotal > 0) {
+        agg.composite_delta /= wTotal;
+        for (const c of CATS) { agg[`d_${c}`] /= wTotal; agg[`l_${c}`] /= wTotal; agg[`lp_${c}`] /= wTotal; }
+      }
+      agg.expansion_pct = agg.prev_words > 0 ? ((agg.curr_words - agg.prev_words) / agg.prev_words * 100) : 0;
+      agg._sourceCount = rows.length;
+      agg._sources = rows.map(r => r.doc_type);
+      return agg;
+    });
+  } else {
+    filtered = rawFiltered;
+  }
+
   const metricCat = metric==="composite" ? null : metric;
   const deltaKey = metricCat ? `d_${metricCat}` : "composite_delta";
 
