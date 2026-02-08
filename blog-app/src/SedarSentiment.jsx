@@ -1,18 +1,7 @@
 import { useState, useMemo } from "react";
 import {
-  ComposedChart,
-  Line,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ReferenceLine,
-  Cell,
-  BarChart,
-  ScatterChart,
-  Scatter,
+  ComposedChart, Line, Bar, Area, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, ReferenceLine, Cell, BarChart, LineChart,
 } from "recharts";
 
 /* ═══ DESIGN TOKENS ═══ */
@@ -36,8 +25,6 @@ const DOC_GROUPS = {
   periodic: { label:"All Periodic", types:["interim_mda","annual_mda","interim_fs","annual_fs","aif"] },
   news: { label:"News/MCR",   types:["news_release","mcr"] },
 };
-
-const EVENT_WEIGHTS = { neg:0.4, unc:0.25, lit:0.15, constr:0.1, pos:-0.1 };
 
 /* ═══ SHARED UI ═══ */
 const Card = ({ children, style }) => <div style={{ background:C.card, border:`1px solid ${C.bd}`, borderRadius:4, padding:16, ...style }}>{children}</div>;
@@ -72,10 +59,9 @@ function zBg(z, metric, intensity) {
 /* ═══ DATA TRANSFORM ═══ */
 function transformSedar(raw) {
   if (!raw) return null;
-  const newsTypes = DOC_GROUPS.news.types;
   const timeline = (raw.timeline || []).map(t => {
     const d = t.delta || {}, l = t.level || {};
-    const isNews = newsTypes.includes(t.doc_type);
+    const isNews = t.doc_type === "news_release" || t.doc_type === "mcr";
     const row = { id:t.comparison_id, doc_type:t.doc_type, period:t.period,
       curr_words:t.curr_words, prev_words:t.prev_words, expansion_pct:t.expansion_pct??0,
       sentences_added:t.sentences_added??0, sentences_removed:t.sentences_removed??0,
@@ -88,36 +74,45 @@ function transformSedar(raw) {
     return row;
   });
 
-  // Doc-type z (delta based)
+  // Doc-type z (delta-based, for periodic filings)
   const byDocType = {};
   for (const t of timeline) { (byDocType[t.doc_type]??=[]).push(t); }
   for (const rows of Object.values(byDocType)) {
     for (const c of CATS) { const v=rows.map(r=>r[`d_${c}`]); const m=v.reduce((s,x)=>s+x,0)/v.length; const sd=Math.sqrt(v.reduce((s,x)=>s+(x-m)**2,0)/v.length); for (const r of rows) r[`zdt_${c}`]=sd>0?(r[`d_${c}`]-m)/sd:0; }
     const v=rows.map(r=>r.composite_delta); const m=v.reduce((s,x)=>s+x,0)/v.length; const sd=Math.sqrt(v.reduce((s,x)=>s+(x-m)**2,0)/v.length); for (const r of rows) r.zdt_composite=sd>0?(r.composite_delta-m)/sd:0;
   }
-  // Group z (delta based)
+  // Group z (e.g. all MD&A combined)
   for (const { types } of Object.values(DOC_GROUPS)) {
     const rows = timeline.filter(t => types.includes(t.doc_type)); if (rows.length < 3) continue;
     for (const c of CATS) { const v=rows.map(r=>r[`d_${c}`]); const m=v.reduce((s,x)=>s+x,0)/v.length; const sd=Math.sqrt(v.reduce((s,x)=>s+(x-m)**2,0)/v.length); for (const r of rows) r[`zgrp_${c}`]=sd>0?(r[`d_${c}`]-m)/sd:0; }
     const v=rows.map(r=>r.composite_delta); const m=v.reduce((s,x)=>s+x,0)/v.length; const sd=Math.sqrt(v.reduce((s,x)=>s+(x-m)**2,0)/v.length); for (const r of rows) r.zgrp_composite=sd>0?(r.composite_delta-m)/sd:0;
   }
 
-  // Event z-scores (absolute level) for news/MCR
-  const newsRows = timeline.filter(t => newsTypes.includes(t.doc_type));
+  // ═══ EVENT Z-SCORES for News/MCR ═══
+  // Z-score of ABSOLUTE LEVEL (not delta) — each filing is standalone
+  const newsRows = timeline.filter(t => t.doc_type === "news_release" || t.doc_type === "mcr");
   if (newsRows.length >= 3) {
     for (const c of CATS) {
-      const v = newsRows.map(r=>r[`l_${c}`]);
-      const m = v.reduce((s,x)=>s+x,0)/v.length;
-      const sd = Math.sqrt(v.reduce((s,x)=>s+(x-m)**2,0)/v.length);
-      for (const r of newsRows) r[`zev_${c}`]=sd>0?(r[`l_${c}`]-m)/sd:0;
+      const v = newsRows.map(r => r[`l_${c}`]);
+      const m = v.reduce((s,x) => s+x, 0) / v.length;
+      const sd = Math.sqrt(v.reduce((s,x) => s+(x-m)**2, 0) / v.length);
+      for (const r of newsRows) r[`zev_${c}`] = sd > 0 ? (r[`l_${c}`] - m) / sd : 0;
     }
+    // Composite event z: weighted sum of category z-scores (neg 0.4, unc 0.25, lit 0.15, constr 0.1, pos -0.1)
+    const EV_W = { neg:0.4, unc:0.25, lit:0.15, constr:0.1, pos:-0.1 };
     for (const r of newsRows) {
-      r.zev_composite = CATS.reduce((s,c)=>s + (EVENT_WEIGHTS[c]||0) * (r[`zev_${c}`]||0), 0);
+      r.zev_composite = CATS.reduce((s,c) => s + (r[`zev_${c}`]||0) * (EV_W[c]||0), 0);
     }
-  } else {
-    for (const r of newsRows) {
-      for (const c of CATS) r[`zev_${c}`]=0;
-      r.zev_composite = 0;
+    // Normalize composite to z-scale
+    const cv = newsRows.map(r => r.zev_composite);
+    const cm = cv.reduce((s,x) => s+x, 0) / cv.length;
+    const csd = Math.sqrt(cv.reduce((s,x) => s+(x-cm)**2, 0) / cv.length);
+    if (csd > 0) for (const r of newsRows) r.zev_composite = (r.zev_composite - cm) / csd;
+    // Store means for display
+    for (const c of CATS) {
+      const v = newsRows.map(r => r[`l_${c}`]);
+      newsRows._mean = newsRows._mean || {};
+      newsRows._mean[c] = v.reduce((s,x) => s+x, 0) / v.length;
     }
   }
 
@@ -126,35 +121,13 @@ function transformSedar(raw) {
 
   return { timeline, alerts, heatmap, sectionDetail:raw.section_detail||[], categorySeries:raw.category_series||{},
     rankings:raw.rankings||{}, summaryStats:raw.summary_stats||{}, drilldown:raw.drilldown||{},
-    drivers:raw.drivers||{}, meta:raw.meta||{}, byDocType };
+    drivers:raw.drivers||{}, meta:raw.meta||{}, byDocType, newsRows };
 }
 
 /* ═══ UTILITIES ═══ */
 function fmtTick(d) { return d?.length>=7 ? d.slice(2,7).replace("-","'") : d; }
 function fmtSection(s) { return s.replace(/_/g," ").replace(/\b\w/g,c=>c.toUpperCase()); }
 function fmtNum(v,d) { return v==null?"—":v.toFixed(d??1); }
-function closestPrice(prices, date) {
-  if (!prices?.length) return null;
-  return prices.reduce((best,p) => Math.abs(new Date(p.d)-date) < Math.abs(new Date(best.d)-date) ? p : best, prices[0]);
-}
-function pearson(x, y) {
-  if (!x?.length || x.length !== y.length || x.length < 2) return null;
-  const n = x.length;
-  const meanX = x.reduce((s,v)=>s+v,0)/n;
-  const meanY = y.reduce((s,v)=>s+v,0)/n;
-  let num = 0;
-  let dx = 0;
-  let dy = 0;
-  for (let i=0;i<n;i+=1) {
-    const vx = x[i]-meanX;
-    const vy = y[i]-meanY;
-    num += vx*vy;
-    dx += vx*vx;
-    dy += vy*vy;
-  }
-  const den = Math.sqrt(dx*dy);
-  return den === 0 ? null : num/den;
-}
 
 /* ═══ RICH TOOLTIP ═══ */
 function ResearchTooltip({ active, payload, metric }) {
@@ -171,22 +144,6 @@ function ResearchTooltip({ active, payload, metric }) {
       {d.currWords!=null && <Row l="Words" v={`${d.currWords.toLocaleString()} (prev: ${(d.prevWords||0).toLocaleString()})`} />}
       {d.exp!=null && <Row l="Expansion" v={`${d.exp>0?"+":""}${fmtNum(d.exp)}%`} />}
       {d.sa!=null && <Row l="Sentences" v={`+${d.sa} / −${d.sr??0}`} />}
-      {d.reliable===false && <div style={{color:C.w,marginTop:3,fontSize:8}}>⚠ &lt;{MIN_WORDS} words — low reliability</div>}
-    </div>
-  );
-}
-
-function EventTooltip({ active, payload, metric }) {
-  if (!active || !payload?.length) return null;
-  const d = payload[0]?.payload; if (!d) return null;
-  const Row = ({l,v,c}) => <div style={{display:"flex",justifyContent:"space-between",gap:12,marginBottom:1}}><span style={{color:C.dm}}>{l}</span><span style={{fontWeight:600,color:c||C.tx}}>{v}</span></div>;
-  return (
-    <div style={{ background:C.card, border:`1px solid ${C.bd}`, borderRadius:4, padding:10, fontSize:9, minWidth:200, maxWidth:280, boxShadow:"0 2px 8px rgba(0,0,0,0.08)" }}>
-      <div style={{ fontWeight:800, marginBottom:4 }}>{d.fullPeriod}</div>
-      {d.docLabel && <div style={{ color:C.dm, marginBottom:4 }}>{d.docLabel}</div>}
-      <Row l="Event Z" v={`${d.z>0?"+":""}${fmtNum(d.z,2)}σ`} c={riskColor(d.z,metric)} />
-      {d.price!=null && <Row l="Price" v={`C$${fmtNum(d.price,2)}`} c={C.bl} />}
-      {d.currWords!=null && <Row l="Words" v={`${d.currWords.toLocaleString()}`} />}
       {d.reliable===false && <div style={{color:C.w,marginTop:3,fontSize:8}}>⚠ &lt;{MIN_WORDS} words — low reliability</div>}
     </div>
   );
@@ -213,36 +170,31 @@ export default function SedarSentiment({ rawJson, priceData, ticker, tickerDispl
   const groupTypes = DOC_GROUPS[effGroup].types;
   const filtered = data.timeline.filter(t => groupTypes.includes(t.doc_type)).sort((a,b) => a.period.localeCompare(b.period));
   const metricCat = metric==="composite" ? null : metric;
-  const isNews = effGroup === "news";
-  const isPeriodic = ["mda","fs","periodic"].includes(effGroup);
   const deltaKey = metricCat ? `d_${metricCat}` : "composite_delta";
-  const zKey = isNews ? (metricCat ? `zev_${metricCat}` : "zev_composite") : (metricCat ? `zgrp_${metricCat}` : "zgrp_composite");
-  const reliableF = filtered.filter(t => t.reliable);
-  const outliers = reliableF.filter(t => Math.abs(t[zKey])>=1.5);
-  const latestSpike = outliers.length ? outliers.reduce((a,b)=>a.period>b.period?a:b) : null;
-  const maxInc = reliableF.length ? reliableF.reduce((a,b)=>b[zKey]>a[zKey]?b:a) : null;
-  const maxDec = reliableF.length ? reliableF.reduce((a,b)=>b[zKey]<a[zKey]?b:a) : null;
 
-  const viewOptions = isNews ? [
-    { key:"eventAnalysis", label:"Event Analysis" },
-    { key:"toneLevels", label:"Tone Levels" },
-  ] : [
-    { key:"priceTone", label:"Price × Tone" },
-    { key:"filingAnalysis", label:"Filing Analysis" },
-    { key:"sectionDrilldown", label:"Section Drilldown" },
-    ...(isPeriodic ? [{ key:"signalBacktest", label:"Signal Backtest" }] : []),
-  ];
-  const effView = viewOptions.some(v => v.key === view) ? view : viewOptions[0].key;
+  // Compute z-scores ON THE FLY for current filtered set
+  const zField = `_zfilt_${metricCat||"comp"}`;
+  if (filtered.length >= 3) {
+    const vals = filtered.map(r => r[deltaKey]);
+    const m = vals.reduce((s,x)=>s+x,0)/vals.length;
+    const sd = Math.sqrt(vals.reduce((s,x)=>s+(x-m)**2,0)/vals.length);
+    for (const r of filtered) r[zField] = sd > 0 ? (r[deltaKey]-m)/sd : 0;
+  } else { for (const r of filtered) r[zField] = 0; }
+
+  const reliableF = filtered.filter(t => t.reliable);
+  const outliers = reliableF.filter(t => Math.abs(t[zField])>=1.5);
+  const latestSpike = outliers.length ? outliers.reduce((a,b)=>a.period>b.period?a:b) : null;
+  const maxInc = reliableF.length ? reliableF.reduce((a,b)=>b[zField]>a[zField]?b:a) : null;
+  const maxDec = reliableF.length ? reliableF.reduce((a,b)=>b[zField]<a[zField]?b:a) : null;
 
   // ═══ PRICE × TONE ═══
-  const renderPriceTone = (forcedMode) => {
+  const renderPriceTone = () => {
     const prices = priceData || [];
-    const mode = forcedMode || toneMode;
-    if (mode === "delta") {
+    if (toneMode === "delta") {
       const tonePoints = filtered.map(t => {
         const td = new Date(t.period);
         const near = prices.length ? prices.reduce((best,p) => Math.abs(new Date(p.d)-td)<Math.abs(new Date(best.d)-td)?p:best, prices[0]) : null;
-        return { fullPeriod:t.period, delta:+t[deltaKey].toFixed(1), z:+t[zKey].toFixed(2),
+        return { fullPeriod:t.period, delta:+t[deltaKey].toFixed(1), z:+t[zField].toFixed(2),
           price:near?.c??null, docLabel:DT_LABELS[t.doc_type], isAnnual:t.doc_type.startsWith("annual"),
           currWords:t.curr_words, prevWords:t.prev_words, exp:t.expansion_pct,
           sa:t.sentences_added, sr:t.sentences_removed, reliable:t.reliable };
@@ -325,13 +277,13 @@ export default function SedarSentiment({ rawJson, priceData, ticker, tickerDispl
   // ═══ FILING ANALYSIS (Z-Scores + Event Table + Alerts) ═══
   const renderFilingAnalysis = () => {
     const chartData = filtered.map(t => ({
-      fullPeriod:t.period, z:+t[zKey].toFixed(2), delta:+t[deltaKey].toFixed(1),
+      fullPeriod:t.period, z:+t[zField].toFixed(2), delta:+t[deltaKey].toFixed(1),
       docLabel:DT_LABELS[t.doc_type], isAnnual:t.doc_type.startsWith("annual"),
       currWords:t.curr_words, prevWords:t.prev_words, exp:t.expansion_pct,
       sa:t.sentences_added, sr:t.sentences_removed, reliable:t.reliable,
     }));
 
-    const events = filtered.map(t => ({ ...t, docLabel:DT_LABELS[t.doc_type], zVal:t[zKey], deltaVal:t[deltaKey] }));
+    const events = filtered.map(t => ({ ...t, docLabel:DT_LABELS[t.doc_type], zVal:t[zField], deltaVal:t[deltaKey] }));
     const sortedEv = [...events].sort((a,b) => {
       const av = eventSort.col==="period"?a.period : eventSort.col==="z"?Math.abs(a.zVal) : eventSort.col==="delta"?Math.abs(a.deltaVal) : a.expansion_pct;
       const bv = eventSort.col==="period"?b.period : eventSort.col==="z"?Math.abs(b.zVal) : eventSort.col==="delta"?Math.abs(b.deltaVal) : b.expansion_pct;
@@ -353,9 +305,9 @@ export default function SedarSentiment({ rawJson, priceData, ticker, tickerDispl
       <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
         <StatBox l="Filings" v={filtered.length} sub={`${DOC_GROUPS[effGroup].label} (${groupTypes.map(dt=>data.byDocType[dt]?.length||0).join("+")})`} />
         <StatBox l="Outliers |z|≥1.5" v={outliers.length} sub={`of ${reliableF.length} reliable`} c={outliers.length?C.w:C.dm} />
-        <StatBox l="Latest Spike" v={latestSpike?`z=${latestSpike[zKey]>0?"+":""}${latestSpike[zKey].toFixed(1)}`:"—"} sub={latestSpike?`${DT_LABELS[latestSpike.doc_type]} ${latestSpike.period}`:"none"} c={latestSpike?riskColor(latestSpike[zKey],metricCat):C.dm} />
-        <StatBox l="Max ↑ Risk" v={maxInc?`z=${maxInc[zKey]>0?"+":""}${maxInc[zKey].toFixed(1)}`:"—"} c={C.r} />
-        <StatBox l="Max ↓ Risk" v={maxDec?`z=${maxDec[zKey].toFixed(1)}`:"—"} c={C.g} />
+        <StatBox l="Latest Spike" v={latestSpike?`z=${latestSpike[zField]>0?"+":""}${latestSpike[zField].toFixed(1)}`:"—"} sub={latestSpike?`${DT_LABELS[latestSpike.doc_type]} ${latestSpike.period}`:"none"} c={latestSpike?riskColor(latestSpike[zField],metricCat):C.dm} />
+        <StatBox l="Max ↑ Risk" v={maxInc?`z=${maxInc[zField]>0?"+":""}${maxInc[zField].toFixed(1)}`:"—"} c={C.r} />
+        <StatBox l="Max ↓ Risk" v={maxDec?`z=${maxDec[zField].toFixed(1)}`:"—"} c={C.g} />
       </div>
 
       <Card style={{marginBottom:12}}>
@@ -449,265 +401,6 @@ export default function SedarSentiment({ rawJson, priceData, ticker, tickerDispl
         </Card>
       )}
     </>);
-  };
-
-  // ═══ EVENT ANALYSIS (News/MCR) ═══
-  const renderEventAnalysis = () => {
-    const prices = priceData || [];
-    const eventPoints = filtered.map(t => {
-      const td = new Date(t.period);
-      const near = prices.length ? prices.reduce((best,p) => Math.abs(new Date(p.d)-td)<Math.abs(new Date(best.d)-td)?p:best, prices[0]) : null;
-      return {
-        fullPeriod:t.period,
-        z:+(t[zKey]||0).toFixed(2),
-        price:near?.c??null,
-        docLabel:DT_LABELS[t.doc_type],
-        currWords:t.curr_words,
-        reliable:t.reliable,
-      };
-    });
-
-    const pMin = prices.length ? Math.round(Math.min(...prices.map(p=>p.c))*0.9*100)/100 : 0;
-    const pMax = prices.length ? Math.round(Math.max(...prices.map(p=>p.c))*1.1*100)/100 : 10;
-
-    const eventLog = filtered.map(t => ({
-      ...t,
-      docLabel:DT_LABELS[t.doc_type],
-      zVal:t[zKey]||0,
-    }));
-
-    return (
-      <>
-        <Card style={{marginBottom:12,background:C.hi,border:"none"}}>
-          <div style={{fontSize:13,fontWeight:700,marginBottom:4}}>Event Analysis — {tickerDisplay} News/MCR</div>
-          <div style={{fontSize:10,color:C.dm,lineHeight:1.7,maxWidth:820}}>
-            Each filing is treated as a standalone event. Z-scores are computed on absolute tone levels across all News/MCR releases.
-            <b style={{color:C.r}}> Red = higher risk language vs peer events.</b> <b style={{color:C.g}}> Green = lower risk language.</b>
-          </div>
-        </Card>
-
-        <Card style={{marginBottom:12}}>
-          <Lbl>Event Tone Timeline — {metric==="composite"?"Composite":CAT_META[metric]?.label}</Lbl>
-          <div style={{width:"100%",height:280}}>
-            <ResponsiveContainer>
-              <ComposedChart data={eventPoints} margin={{top:10,right:50,left:10,bottom:5}}>
-                <CartesianGrid strokeDasharray="3 3" stroke={C.bd} opacity={0.4} />
-                <XAxis dataKey="fullPeriod" tickFormatter={fmtTick} tick={{fontSize:8,fill:C.dm}} />
-                <YAxis yAxisId="left" tick={{fontSize:8,fill:C.dm}} />
-                <YAxis yAxisId="right" orientation="right" tick={{fontSize:8,fill:C.bl}} domain={[pMin,pMax]} tickFormatter={v=>v.toFixed(2)} label={{value:"C$",angle:90,position:"insideRight",style:{fontSize:8,fill:C.bl}}} />
-                <Tooltip content={<EventTooltip metric={metricCat} />} />
-                <ReferenceLine yAxisId="left" y={0} stroke={C.tx} opacity={0.3} />
-                <ReferenceLine yAxisId="left" y={1.5} stroke={C.r} strokeDasharray="4 4" opacity={0.3} />
-                <ReferenceLine yAxisId="left" y={-1.5} stroke={C.g} strokeDasharray="4 4" opacity={0.3} />
-                <Bar yAxisId="left" dataKey="z" maxBarSize={16}>
-                  {eventPoints.map((d,i) => <Cell key={i} fill={d.reliable?zBg(d.z,metricCat,1.5):`${C.dm}44`} />)}
-                </Bar>
-                <Line yAxisId="right" type="monotone" dataKey="price" stroke={C.bl} strokeWidth={2} dot={{r:2,fill:C.bl}} connectNulls />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-          <div style={{fontSize:8,color:C.dm,marginTop:4}}>Event z-scores (bars) with {tickerDisplay} weekly close (line). Faded = &lt;{MIN_WORDS} words.</div>
-        </Card>
-
-        <Card style={{marginBottom:12}}>
-          <Lbl>Event Log — Absolute Tone Levels</Lbl>
-          <div style={{overflowX:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:9,fontFamily:"'IBM Plex Mono', monospace"}}>
-              <thead>
-                <tr style={{borderBottom:`2px solid ${C.bd}`}}>
-                  {[
-                    "Period",
-                    "Type",
-                    "Event Z",
-                    "Neg",
-                    "Neg Z",
-                    "Unc",
-                    "Unc Z",
-                    "Lit",
-                    "Lit Z",
-                    "Con",
-                    "Con Z",
-                    "Pos",
-                    "Pos Z",
-                    "Words",
-                  ].map(h => <th key={h} style={{padding:"6px 6px",textAlign:"left",fontSize:8,color:C.dm,textTransform:"uppercase"}}>{h}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {eventLog.map((t,i) => (
-                  <tr key={t.id||i} style={{borderBottom:`1px solid ${C.bd}`,background:Math.abs(t.zVal)>=1.5?zBg(t.zVal,metricCat,0.2):i%2===0?"transparent":C.hi,opacity:t.reliable?1:0.5}}>
-                    <td style={{padding:"5px 6px",fontWeight:700}}>{t.period}</td>
-                    <td style={{padding:"5px 6px"}}>{t.docLabel}</td>
-                    <td style={{padding:"5px 6px",fontWeight:700,color:riskColor(t.zVal,metricCat)}}>{t.zVal>0?"+":""}{t.zVal.toFixed(2)}σ</td>
-                    {eventCats.flatMap(cat => ([
-                      <td key={`${t.period}-${cat}`} style={{padding:"5px 6px",color:CAT_META[cat].color}}>
-                        {t[`l_${cat}`].toFixed(1)}
-                      </td>,
-                      <td key={`${t.period}-${cat}-z`} style={{padding:"5px 6px",color:riskColor(t[`zev_${cat}`]||0,cat)}}>
-                        {(t[`zev_${cat}`]||0)>0?"+":""}{(t[`zev_${cat}`]||0).toFixed(2)}
-                      </td>,
-                    ]))}
-                    <td style={{padding:"5px 6px",color:C.dm}}>{t.curr_words.toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      </>
-    );
-  };
-
-  // ═══ SIGNAL BACKTEST ═══
-  const renderSignalBacktest = () => {
-    const prices = priceData || [];
-    const windows = [
-      { key:"1W", days:7 },
-      { key:"2W", days:14 },
-      { key:"4W", days:28 },
-      { key:"8W", days:56 },
-      { key:"12W", days:84 },
-    ];
-
-    const filings = filtered
-      .map(t => {
-        const filingDate = new Date(t.period);
-        const base = closestPrice(prices, filingDate);
-        if (!base) return null;
-        const ret = {};
-        for (const w of windows) {
-          const targetDate = new Date(filingDate);
-          targetDate.setDate(targetDate.getDate() + w.days);
-          const target = closestPrice(prices, targetDate);
-          ret[w.key] = target ? ((target.c / base.c) - 1) * 100 : null;
-        }
-        return {
-          period: t.period,
-          delta: t.composite_delta,
-          returns: ret,
-        };
-      })
-      .filter(Boolean);
-
-    if (filings.length < 3) {
-      return (
-        <Card>
-          <div style={{fontSize:10,color:C.dm}}>Not enough filings with price coverage to run the signal backtest.</div>
-        </Card>
-      );
-    }
-
-    const sortedByDelta = [...filings].sort((a,b)=>a.delta-b.delta);
-    const cut1 = Math.floor(sortedByDelta.length / 3);
-    const cut2 = Math.floor((sortedByDelta.length * 2) / 3);
-    sortedByDelta.forEach((f,idx) => {
-      if (idx < cut1) f.tercile = "Low";
-      else if (idx < cut2) f.tercile = "Mid";
-      else f.tercile = "High";
-    });
-
-    const statsByWindow = windows.map(w => {
-      const deltaVals = [];
-      const returnVals = [];
-      const terciles = { Low:[], Mid:[], High:[] };
-      for (const f of sortedByDelta) {
-        const val = f.returns[w.key];
-        if (val == null) continue;
-        deltaVals.push(f.delta);
-        returnVals.push(val);
-        terciles[f.tercile].push(val);
-      }
-      const r = pearson(deltaVals, returnVals);
-      const tercileStats = Object.fromEntries(Object.entries(terciles).map(([k,vals]) => {
-        if (!vals.length) return [k,{ avg:null, win:null, n:0 }];
-        const avg = vals.reduce((s,v)=>s+v,0)/vals.length;
-        const win = vals.filter(v=>v>0).length / vals.length * 100;
-        return [k,{ avg, win, n:vals.length }];
-      }));
-      return { window:w.key, r, tercileStats };
-    });
-
-    const best = statsByWindow
-      .filter(s => s.r != null)
-      .sort((a,b) => Math.abs(b.r) - Math.abs(a.r))[0];
-    const bestWindow = best?.window || "—";
-    const bestStrength = best?.r == null ? "—" : Math.abs(best.r) >= 0.4 ? "Strong" : Math.abs(best.r) >= 0.2 ? "Moderate" : "Weak";
-    const spread8w = statsByWindow.find(s => s.window === "8W");
-    const spreadVal = spread8w?.tercileStats?.High?.avg != null && spread8w?.tercileStats?.Low?.avg != null
-      ? spread8w.tercileStats.High.avg - spread8w.tercileStats.Low.avg
-      : null;
-
-    const scatterData = sortedByDelta
-      .map(f => ({ x:f.delta, y:f.returns["8W"] }))
-      .filter(p => p.y != null);
-
-    return (
-      <>
-        <Card style={{marginBottom:12,background:C.hi,border:"none"}}>
-          <div style={{fontSize:13,fontWeight:700,marginBottom:4}}>Signal Backtest — {tickerDisplay} {DOC_GROUPS[effGroup].label}</div>
-          <div style={{fontSize:10,color:C.dm,lineHeight:1.7,maxWidth:820}}>
-            Forward returns after each filing, sorted into terciles by composite tone delta. Measures whether tone shifts predict price performance.
-          </div>
-        </Card>
-
-        <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
-          <StatBox l="Best Window" v={bestWindow} sub="Highest |r|" />
-          <StatBox l="Signal Strength" v={bestStrength} sub={best?.r != null ? `r=${best.r>0?"+":""}${best.r.toFixed(2)}` : "—"} />
-          <StatBox l="8W Spread" v={spreadVal != null ? `${spreadVal>0?"+":""}${spreadVal.toFixed(1)}%` : "—"} sub="High − Low" c={spreadVal>0?C.g:spreadVal<0?C.r:C.dm} />
-        </div>
-
-        <Card style={{marginBottom:12}}>
-          <Lbl>Tercile Return Matrix</Lbl>
-          <div style={{overflowX:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:9,fontFamily:"'IBM Plex Mono', monospace"}}>
-              <thead>
-                <tr style={{borderBottom:`2px solid ${C.bd}`}}>
-                  <th style={{padding:"6px 6px",textAlign:"left",fontSize:8,color:C.dm,textTransform:"uppercase"}}>Window</th>
-                  {['Low','Mid','High'].map(t => (
-                    <th key={t} style={{padding:"6px 6px",textAlign:"left",fontSize:8,color:C.dm,textTransform:"uppercase"}}>{t} Avg / Win%</th>
-                  ))}
-                  <th style={{padding:"6px 6px",textAlign:"left",fontSize:8,color:C.dm,textTransform:"uppercase"}}>Pearson r</th>
-                </tr>
-              </thead>
-              <tbody>
-                {statsByWindow.map((row,i) => (
-                  <tr key={row.window} style={{borderBottom:`1px solid ${C.bd}`,background:i%2===0?"transparent":C.hi}}>
-                    <td style={{padding:"5px 6px",fontWeight:700}}>{row.window}</td>
-                    {['Low','Mid','High'].map(t => {
-                      const stat = row.tercileStats[t];
-                      return (
-                        <td key={`${row.window}-${t}`} style={{padding:"5px 6px",color:stat.avg!=null?(stat.avg>=0?C.g:C.r):C.dm}}>
-                          {stat.avg!=null ? `${stat.avg>0?"+":""}${stat.avg.toFixed(1)}% / ${stat.win.toFixed(0)}%` : "—"}
-                        </td>
-                      );
-                    })}
-                    <td style={{padding:"5px 6px",color:row.r!=null?(row.r>=0?C.g:C.r):C.dm}}>
-                      {row.r!=null ? `${row.r>0?"+":""}${row.r.toFixed(2)}` : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-
-        <Card style={{marginBottom:12}}>
-          <Lbl>Scatter: Composite Δ vs 8W Return</Lbl>
-          <div style={{width:"100%",height:260}}>
-            <ResponsiveContainer>
-              <ScatterChart margin={{top:10,right:20,left:10,bottom:10}}>
-                <CartesianGrid strokeDasharray="3 3" stroke={C.bd} opacity={0.4} />
-                <XAxis type="number" dataKey="x" tick={{fontSize:8,fill:C.dm}} label={{value:"Composite Δ (hits/10K)",position:"insideBottom",offset:-5,style:{fontSize:8,fill:C.dm}}} />
-                <YAxis type="number" dataKey="y" tick={{fontSize:8,fill:C.dm}} label={{value:"8W Return %",angle:-90,position:"insideLeft",style:{fontSize:8,fill:C.dm}}} />
-                <Tooltip contentStyle={{background:C.card,border:`1px solid ${C.bd}`,borderRadius:4,fontSize:9}} formatter={(val,name)=>name==="y"?[`${val.toFixed(1)}%`,`8W Return`]:[val.toFixed(1),"Composite Δ"]} />
-                <Scatter data={scatterData} fill={C.acc} />
-              </ScatterChart>
-            </ResponsiveContainer>
-          </div>
-          <div style={{fontSize:8,color:C.dm,marginTop:4}}>Each point = a filing. X = composite tone delta, Y = forward 8-week return.</div>
-        </Card>
-      </>
-    );
   };
 
   // ═══ SECTION DRILLDOWN ═══
@@ -822,21 +515,124 @@ export default function SedarSentiment({ rawJson, priceData, ticker, tickerDispl
     </>);
   };
 
+  // ═══ NEWS EVENT VIEW ═══
+  const renderNewsEvents = () => {
+    const news = data.newsRows || [];
+    if (!news.length) return <Card><div style={{fontSize:10,color:C.dm}}>No news/MCR filings available.</div></Card>;
+
+    const evKey = metricCat ? `zev_${metricCat}` : "zev_composite";
+    const lvlKey = metricCat ? `l_${metricCat}` : null;
+    const sorted = [...news].sort((a,b) => b.period.localeCompare(a.period));
+    const outliers = sorted.filter(t => Math.abs(t[evKey]||0) >= 1.5);
+
+    // Price at event
+    const prices = priceData || [];
+    const gnp = (date) => {
+      if (!prices.length) return null;
+      const td = new Date(date);
+      return prices.reduce((best,p) => Math.abs(new Date(p.d)-td)<Math.abs(new Date(best.d)-td)?p:best, prices[0])?.c;
+    };
+
+    return (<>
+      <Card style={{marginBottom:12,background:C.hi,border:"none"}}>
+        <div style={{fontSize:13,fontWeight:700,marginBottom:4}}>News & Material Change Events — {tickerDisplay}</div>
+        <div style={{fontSize:10,color:C.dm,lineHeight:1.7,maxWidth:800}}>
+          Each filing analyzed as a <b>standalone event</b> — z-scores measure how this filing's absolute tone compares to all {news.length} news/MCR filings. Not sequential comparisons.
+          {metricCat ? ` Showing ${CAT_META[metricCat].label} density.` : " Composite = weighted risk score across all categories."}
+        </div>
+      </Card>
+
+      <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+        <StatBox l="Events" v={news.length} sub="news releases + MCR" />
+        <StatBox l="Outliers |z|≥1.5" v={outliers.length} sub={`unusual tone events`} c={outliers.length?C.w:C.dm} />
+        <StatBox l="Avg Words" v={Math.round(news.reduce((s,n)=>s+n.curr_words,0)/news.length).toLocaleString()} sub="per filing" />
+      </div>
+
+      {/* Event tone chart — absolute level with z-score coloring */}
+      <Card style={{marginBottom:12}}>
+        <Lbl>Event Tone Timeline — {metricCat ? CAT_META[metricCat].label : "Composite Risk"}</Lbl>
+        {(() => {
+          const chronological = [...news].sort((a,b) => a.period.localeCompare(b.period));
+          const chartData = chronological.map(t => ({
+            fullPeriod: t.period, z: +(t[evKey]||0).toFixed(2),
+            price: gnp(t.period), docLabel: DT_LABELS[t.doc_type], words: t.curr_words, reliable: t.reliable,
+            _evZ: t[evKey]||0
+          }));
+          return (
+            <div style={{width:"100%",height:280}}>
+              <ResponsiveContainer>
+                <ComposedChart data={chartData} margin={{top:10,right:50,left:10,bottom:5}}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={C.bd} opacity={0.4} />
+                  <XAxis dataKey="fullPeriod" tickFormatter={fmtTick} tick={{fontSize:8,fill:C.dm}} interval="preserveStartEnd" />
+                  <YAxis yAxisId="left" tick={{fontSize:8,fill:C.dm}} label={{value:"Event z-score",angle:-90,position:"insideLeft",style:{fontSize:8,fill:C.dm}}} />
+                  <YAxis yAxisId="right" orientation="right" tick={{fontSize:8,fill:C.bl}} tickFormatter={v=>v.toFixed(2)} label={{value:"C$",angle:90,position:"insideRight",style:{fontSize:8,fill:C.bl}}} />
+                  <Tooltip contentStyle={{background:C.card,border:`1px solid ${C.bd}`,borderRadius:4,fontSize:9}} />
+                  <ReferenceLine yAxisId="left" y={0} stroke={C.tx} strokeDasharray="4 4" opacity={0.3} />
+                  <ReferenceLine yAxisId="left" y={1.5} stroke={C.r} strokeDasharray="4 4" opacity={0.3} />
+                  <ReferenceLine yAxisId="left" y={-1.5} stroke={C.g} strokeDasharray="4 4" opacity={0.3} />
+                  <Bar yAxisId="left" dataKey="z" maxBarSize={10}>
+                    {chartData.map((d,i) => <Cell key={i} fill={zBg(d._evZ,metricCat,1.5)} stroke={Math.abs(d._evZ)>=1.5?riskColor(d._evZ,metricCat):"none"} strokeWidth={1} />)}
+                  </Bar>
+                  <Line yAxisId="right" type="monotone" dataKey="price" stroke={C.bl} strokeWidth={2} dot={false} connectNulls />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          );
+        })()}
+        <div style={{fontSize:8,color:C.dm,marginTop:4}}>Bars = event z-score (how unusual this filing's tone is). Line = {tickerDisplay} price. Dashed lines = ±1.5σ outlier thresholds.</div>
+      </Card>
+
+      {/* Event table */}
+      <Card style={{marginBottom:12}}>
+        <Lbl>Event Log ({sorted.length} filings)</Lbl>
+        <div style={{overflowX:"auto",maxHeight:400,overflow:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:9,fontFamily:"'IBM Plex Mono', monospace"}}>
+            <thead><tr style={{borderBottom:`2px solid ${C.bd}`,position:"sticky",top:0,background:C.card}}>
+              {["Date","Type","z-Score","NEG","UNC","POS","LIT","CON","Words"].map(h =>
+                <th key={h} style={{padding:"5px 6px",textAlign:"left",fontSize:8,color:C.dm,textTransform:"uppercase"}}>{h}</th>
+              )}
+            </tr></thead>
+            <tbody>{sorted.map((t,i) => {
+              const z = t[evKey]||0;
+              const isOutlier = Math.abs(z) >= 1.5;
+              return (
+                <tr key={t.id||i} style={{borderBottom:`1px solid ${C.bd}`,background:isOutlier?zBg(z,metricCat,0.3):i%2===0?"transparent":C.hi,opacity:t.reliable?1:0.5}}>
+                  <td style={{padding:"4px 6px",fontWeight:700}}>{t.period}</td>
+                  <td style={{padding:"4px 6px",fontSize:8}}>{t.doc_type==="mcr"?"MCR":"News"}</td>
+                  <td style={{padding:"4px 6px",fontWeight:700,color:riskColor(z,metricCat)}}>{z>0?"+":""}{z.toFixed(2)}σ</td>
+                  {CATS.map(c => <td key={c} style={{padding:"4px 6px",color:Math.abs(t[`zev_${c}`]||0)>=1.5?riskColor(t[`zev_${c}`],c):C.dm}}>{t[`l_${c}`].toFixed(0)}</td>)}
+                  <td style={{padding:"4px 6px",color:t.curr_words<MIN_WORDS?C.w:C.dm}}>{t.curr_words.toLocaleString()}</td>
+                </tr>
+              );
+            })}</tbody>
+          </table>
+        </div>
+        <div style={{fontSize:8,color:C.dm,marginTop:4}}>Absolute tone density (hits/10K). Z-scores computed across all {news.length} events. Highlighted = |z| ≥ 1.5. Faded = &lt;{MIN_WORDS} words.</div>
+      </Card>
+    </>);
+  };
+
   // ═══ MAIN RENDER ═══
+  const isNews = effGroup === "news";
+  const VIEWS = isNews
+    ? [{ key:"newsEvents", label:"Event Analysis" }, { key:"priceTone", label:"Tone Levels" }]
+    : [{ key:"priceTone", label:"Price × Tone" }, { key:"filingAnalysis", label:"Filing Analysis" }, { key:"sectionDrilldown", label:"Section Drilldown" }];
+  const effView = VIEWS.find(v=>v.key===view) ? view : VIEWS[0].key;
+
   return (
     <div>
       <Card style={{marginBottom:12,background:C.hi,border:"none"}}>
         <div style={{fontSize:13,fontWeight:700,marginBottom:4}}>SEDAR+ Filing Sentiment — {tickerDisplay}</div>
         <div style={{fontSize:10,color:C.dm,lineHeight:1.7,maxWidth:800}}>
-          Dictionary-based NLP comparison of {data.meta.total_comparisons||data.timeline.length} SEDAR+ filings across {data.meta.doc_types?.length||7} document types.
+          Dictionary-based NLP comparison of {data.meta.total_comparisons||data.timeline.length} consecutive SEDAR+ filing pairs across {data.meta.doc_types?.length||7} document types.
           Measures negative, uncertainty, litigious, constraining, and positive language density (hits per 10,000 words).
-          Z-scores normalize tone shifts within each document group.
+          Z-scores computed within each document group to normalize structural differences.
         </div>
       </Card>
 
       <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap",alignItems:"center"}}>
         <span style={{fontSize:9,fontWeight:700,color:C.dm}}>DOC GROUP:</span>
-        {availGroups.map(g => <Pill key={g} label={DOC_GROUPS[g].label} active={effGroup===g} onClick={()=>{setDocGroup(g);setExpandedCell(null);setView(g==="news"?"eventAnalysis":"priceTone");}} />)}
+        {availGroups.map(g => <Pill key={g} label={DOC_GROUPS[g].label} active={effGroup===g} onClick={()=>{setDocGroup(g);setExpandedCell(null);}} />)}
       </div>
       <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap",alignItems:"center"}}>
         <span style={{fontSize:9,fontWeight:700,color:C.dm}}>METRIC:</span>
@@ -845,7 +641,7 @@ export default function SedarSentiment({ rawJson, priceData, ticker, tickerDispl
       </div>
       <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
         <span style={{fontSize:9,fontWeight:700,color:C.dm}}>VIEW:</span>
-        {viewOptions.map(v => <Pill key={v.key} label={v.label} active={effView===v.key} onClick={()=>setView(v.key)} />)}
+        {VIEWS.map(v => <Pill key={v.key} label={v.label} active={effView===v.key} onClick={()=>setView(v.key)} />)}
         {effView==="priceTone" && !isNews && <>
           <span style={{fontSize:9,fontWeight:700,color:C.dm,marginLeft:8}}>MODE:</span>
           <Pill label="Delta" active={toneMode==="delta"} onClick={()=>setToneMode("delta")} />
@@ -856,9 +652,7 @@ export default function SedarSentiment({ rawJson, priceData, ticker, tickerDispl
       {effView==="priceTone" && renderPriceTone()}
       {effView==="filingAnalysis" && renderFilingAnalysis()}
       {effView==="sectionDrilldown" && renderSectionDrilldown()}
-      {effView==="signalBacktest" && renderSignalBacktest()}
-      {effView==="eventAnalysis" && renderEventAnalysis()}
-      {effView==="toneLevels" && renderPriceTone("level")}
+      {effView==="newsEvents" && renderNewsEvents()}
     </div>
   );
 }
