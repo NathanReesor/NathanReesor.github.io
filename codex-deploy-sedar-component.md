@@ -80,6 +80,7 @@ const sedarData = useMemo(() => adaptSedarJson(sedarRaw), [sedarRaw]);
 - **New file:** `blog-app/src/SedarSentiment.jsx` (934 lines)
 - **App.jsx changes:** Add 1 import, remove 4 state lines, replace ~625 lines of inline SEDAR rendering with ~20 lines that delegate to the new component
 - **No other files change**
+- **Cleanup:** Remove the duplicate `SedarSentiment.jsx` at the repo root to keep a single source of truth
 
 ## Commit message
 "Refactor: extract SEDAR sentiment into standalone component with 5 views"

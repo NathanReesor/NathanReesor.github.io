@@ -1,3 +1,4 @@
+// Updated component source (SedarSentiment (1).jsx).
 import { useState, useMemo, useCallback } from "react";
 import {
   ComposedChart, Line, Bar, Area, XAxis, YAxis, CartesianGrid,
