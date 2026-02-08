@@ -1,11 +1,11 @@
 title: "Nathan Reesor"
-description: "Portfolio and blog"
+description: "Portfolio and equity dashboard"
 url: "https://nathanreesor.github.io"
 baseurl: ""
 og_image: "/assets/images/nr-logo.svg"
 markdown: kramdown
-permalink: /blog/:year/:month/:day/:title/
+permalink: /equitydashboard/:year/:month/:day/:title/
 collections:
   posts:
     output: true
-    permalink: /blog/:year/:month/:day/:title/
+    permalink: /equitydashboard/:year/:month/:day/:title/
