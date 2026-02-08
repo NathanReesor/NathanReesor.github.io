@@ -964,7 +964,7 @@ export default function App() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e0d8" />
                 <XAxis dataKey="d" tick={{ fontSize: 7, fill: C.dm }} interval={8} />
                 <YAxis yAxisId="si" tick={{ fontSize: 8, fill: C.r }} />
-                <YAxis yAxisId="p" orientation="right" tick={{ fontSize: 8, fill: C.g }} />
+                <YAxis yAxisId="p" orientation="right" tick={{ fontSize: 8, fill: C.g }} tickFormatter={(value) => value.toFixed(2)} />
                 <Tooltip contentStyle={tt} />
                 <Bar yAxisId="si" dataKey="si" name="SI (M shares)" fill={C.r + "88"} radius={[1,1,0,0]} />
                 <Line yAxisId="p" type="monotone" dataKey="price" stroke={C.g} strokeWidth={2} name={`Price (${STOCKS[sel].ccy})`} dot={false} />
