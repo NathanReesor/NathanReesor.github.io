@@ -349,7 +349,7 @@ export default function App() {
   const sedarTicker = sel === "GOLD" ? "GOLD.TO" : sel;
   const sedarFile = SEDAR_FILES[sedarTicker];
   const sedarUrl = sedarFile ? assetUrl(sedarFile) : null;
-  const sedarEnabled = (tab === "sedar sentiment" || (tab === "overview" && sel === "NXE")) && Boolean(sedarFile);
+  const sedarEnabled = (tab === "sedar sentiment" || tab === "overview") && Boolean(sedarFile);
   const { data: sedarRaw, loading: sedarLoading, error: sedarError } = useJson(sedarUrl, { enabled: sedarEnabled });
   const sedarData = useMemo(() => adaptSedarJson(sedarRaw), [sedarRaw]);
 
@@ -795,7 +795,7 @@ export default function App() {
       )}
 
       {/* ════════════════ SEDAR SENTIMENT ════════════════ */}
-      {tab === "sedar sentiment" && sel === "NXE" && (() => {
+      {tab === "sedar sentiment" && (() => {
         if (sedarLoading) {
           return (
             <Card style={{ marginBottom: 12, textAlign: "center", padding: 30 }}>
@@ -1410,16 +1410,6 @@ export default function App() {
           </div>
         </Card>
       </>); })()}
-      {tab === "sedar sentiment" && sel !== "NXE" && (
-        <Card style={{ textAlign: "center", padding: 40 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>SEDAR Sentiment — NXE Only</div>
-          <div style={{ fontSize: 10, color: C.dm, maxWidth: 500, margin: "0 auto", lineHeight: 1.7 }}>
-            SEDAR+ filing sentiment analysis is currently available for NexGen Energy (NXE) only.
-            The pipeline processes 137 consecutive filing comparisons across 7 doc types from the full SEDAR+ corpus.
-          </div>
-          <button onClick={() => setSel("NXE")} style={{ marginTop: 14, padding: "8px 20px", background: C.tx, color: "#fff", border: "none", borderRadius: 3, fontFamily: "inherit", fontSize: 10, fontWeight: 700, cursor: "pointer" }}>View NXE SEDAR Sentiment →</button>
-        </Card>
-      )}
       {tab === "short interest" && (<>
         <Card style={{ marginBottom: 12, background: C.hi, border: "none" }}>
           <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>SI Change → Forward Price Return: Does short interest predict price?</div>
