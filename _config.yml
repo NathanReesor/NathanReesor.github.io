@@ -9,3 +9,10 @@ collections:
   posts:
     output: true
     permalink: /equitydashboard/:year/:month/:day/:title/
+exclude:
+  - blog-app
+  - blog-legacy
+  - "*.jsx"
+  - node_modules
+  - package.json
+  - package-lock.json
