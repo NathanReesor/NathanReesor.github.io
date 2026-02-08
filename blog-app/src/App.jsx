@@ -68,14 +68,64 @@ const SEDAR_FILES = {
 };
 
 function adaptSedarJson(raw) {
-  if (!raw) {
-    return { timeline: [], alerts: [], heatmap: [] };
+  if (!raw) return { timeline: [], alerts: [], heatmap: [] };
+
+  const timeline = (raw.timeline || []).map(t => {
+    const d = t.delta || {};
+    return {
+      id: t.comparison_id,
+      dt: t.doc_type,
+      p: t.period,
+      unc: d.unc?.rate ?? 0,
+      neg: d.neg?.rate ?? 0,
+      lit: d.lit?.rate ?? 0,
+      con: d.constr?.rate ?? 0,
+      pos: d.pos?.rate ?? 0,
+      comp: t.composite_delta ?? 0,
+      uz: d.unc?.z ?? 0,
+      nz: d.neg?.z ?? 0,
+      pz: d.pos?.z ?? 0,
+      cz: t.z_composite_delta ?? 0,
+      exp: t.expansion_pct ?? 0,
+      sa: t.sentences_added ?? 0,
+      sr: t.sentences_removed ?? 0,
+      top: "",
+    };
+  });
+
+  const alerts = (raw.alerts || []).map(a => ({
+    dt: a.doc_type,
+    sec: a.section,
+    met: a.category_label || a.category,
+    val: a.delta_rate,
+    p: a.period,
+    z: a.z_score,
+    sev: a.severity,
+    dir: a.direction,
+    sa: a.sentences_added ?? 0,
+  }));
+
+  const heatmap = [];
+  const hm = raw.heatmap || {};
+  for (const [dtKey, cells] of Object.entries(hm)) {
+    for (const cell of cells) {
+      heatmap.push({
+        dt: dtKey,
+        p: cell.period,
+        sec: cell.section,
+        comp: cell.composite_delta ?? 0,
+        unc: cell.delta_unc ?? 0,
+        neg: cell.delta_neg ?? 0,
+        lit: cell.delta_lit ?? 0,
+        con: cell.delta_constr ?? 0,
+        pos: cell.delta_pos ?? 0,
+        exp: cell.expansion_pct ?? 0,
+        sa: cell.sentences_added ?? 0,
+      });
+    }
   }
-  return {
-    timeline: raw.timeline || raw.SEDAR_TL || [],
-    alerts: raw.alerts || raw.SEDAR_AL || [],
-    heatmap: raw.heatmap || raw.SEDAR_HM || [],
-  };
+
+  return { timeline, alerts, heatmap };
 }
 
 // ═══════════════════════════════════════════════════
