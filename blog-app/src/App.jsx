@@ -1135,9 +1135,9 @@ export default function App() {
 
         {/* PRICE × TONE CORRELATION VIEW */}
         {sedarView === "priceCorr" && (() => {
-          // Merge filtered tone data with NXE price data
+          // Merge filtered tone data with selected ticker price data
           const toneFilings = filtered; // already filtered by dtFilter and sorted
-          const prices = NXE_P; // weekly OHLCV
+          const prices = PRICE_DATA[sel]; // weekly OHLCV
           const eventTypes = ["news_release","mcr"]; // period = actual date
 
           // Helper: find price closest to a date
@@ -1271,7 +1271,7 @@ export default function App() {
               </ComposedChart>
             </ResponsiveContainer>
             <div style={{ fontSize: 8, color: C.dm, marginTop: 4 }}>
-              Filing tone deltas (bars) vs NXE weekly close (line). Periodic filings use +45 day lag; news/MCR use filing date directly.
+              Filing tone deltas (bars) vs {sel === "GOLD" ? "GOLD.TO" : sel} weekly close (line). Periodic filings use +45 day lag; news/MCR use filing date directly.
             </div>
           </Card>
 
