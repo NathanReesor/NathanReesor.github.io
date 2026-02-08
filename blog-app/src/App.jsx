@@ -370,7 +370,7 @@ export default function App() {
   const corrData = corrSet ? (corrMode === "pct" ? corrSet.pct : corrSet.abs) : [];
   const selCorr = corrData[selLag] || { lag: 0, wk: 0, r: 0, p: 1, n: 0 };
 
-  const tabs = ["overview", "options signals", "sedar sentiment", "short interest", "insider signals", "volume signals", "data sources"];
+  const tabs = ["overview", "sedar sentiment", "short interest", "insider signals", "volume signals", "options signals", "data sources"];
 
   return (
     <div style={{ fontFamily: "'Newsreader', Georgia, serif", background: C.bg, color: C.tx, minHeight: "100vh", padding: "20px 24px", maxWidth: 1100, margin: "0 auto" }}>
@@ -415,48 +415,55 @@ export default function App() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
               <Stat l="Mkt Cap" v={stock.mktCap} /><Stat l="Price" v={stock.price} /><Stat l="P/E" v={stock.pe} /><Stat l="Target" v={stock.target} sub={`${stock.nAn} analysts`} />
             </div>
-            {stock.hasSI && SI_DATA[sel] && <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6, marginTop: 6 }}>
+            {stock.hasSI && SI_DATA[sel] && <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, marginTop: 6 }}>
               <Stat l="Short Interest" v={`${SI_DATA[sel][SI_DATA[sel].length-1].si.toFixed(sel === "GOLD" ? 2 : 1)}M`} sub={`FINRA ${SI_DATA[sel][SI_DATA[sel].length-1].d}`} c={C.r} />
               <Stat l="SI % of Outstanding" v={`${(SI_DATA[sel][SI_DATA[sel].length-1].si / stock.sharesOut * 100).toFixed(1)}%`} sub={`of ${stock.sharesOut.toFixed(0)}M shares`} c={SI_DATA[sel][SI_DATA[sel].length-1].si / stock.sharesOut > 0.10 ? C.r : C.w} />
               <Stat l="Days to Cover" v={SI_DATA[sel][SI_DATA[sel].length-1].dtc.toFixed(1)} sub="SI ÷ avg daily vol" />
-              <Stat l="CAD Notional Short" v={(() => { const s = SI_DATA[sel][SI_DATA[sel].length-1]; const p = PRICE_DATA[sel][PRICE_DATA[sel].length-1].c; const n = s.si * 1e6 * p * stock.fxCAD; return n > 1e9 ? `C$${(n/1e9).toFixed(2)}B` : `C$${(n/1e6).toFixed(1)}M`; })()} sub="SI × price" c={C.acc} />
-              <Stat l="FINRA obs" v={SI_DATA[sel].length} sub="biweekly" c={C.bl} />
             </div>}
-            {!stock.hasSI && <div style={{ marginTop: 6, padding: 8, background: "#fdf5f3", borderRadius: 3, fontSize: 9, color: C.r }}>
-              <b>No FINRA Short Interest:</b> {sel === "TXG" ? "TSX-only — requires CIRO via TMX DataLinx." : "SI data not available."}
+            {!stock.hasSI && <div style={{ marginTop: 6, padding: 8, background: C.hi, borderRadius: 3, fontSize: 9, color: C.dm }}>
+              <b>Short Interest:</b> {sel === "TXG" ? "TSX-only — FINRA data not available. Requires CIRO via TMX DataLinx." : "SI data not available for this ticker."}
             </div>}
           </Card>
           <Card>
             <Lbl>Signals</Lbl>
-            <div style={{ marginBottom: 8 }}><div style={{ fontSize: 7, color: C.dm, textTransform: "uppercase", letterSpacing: 1 }}>Insider 18M Net</div><div style={{ marginTop: 3 }}>{ins.transactions.length > 0 ? <Pill v={ins.summary.net18m > 0 ? `+${(ins.summary.net18m/1000).toFixed(0)}K shs` : `${(ins.summary.net18m/1000).toFixed(0)}K shs`} good={ins.summary.net18m > 0} /> : <span style={{ fontSize: 9, color: C.dm }}>Not yet compiled</span>}</div><div style={{ fontSize: 8, color: C.dm, marginTop: 2 }}>{ins.transactions.length > 0 ? `${ins.transactions.length} transactions in 2Y` : "Check SEDI/SEC EDGAR"}</div></div>
+            <div style={{ marginBottom: 8 }}><div style={{ fontSize: 7, color: C.dm, textTransform: "uppercase", letterSpacing: 1 }}>Insider Net</div><div style={{ marginTop: 3 }}>{ins.transactions.length > 0 ? <Pill v={ins.summary.net18m > 0 ? `+${(ins.summary.net18m/1000).toFixed(0)}K shs` : `${(ins.summary.net18m/1000).toFixed(0)}K shs`} good={ins.summary.net18m > 0} /> : <span style={{ fontSize: 9, color: C.dm }}>Not yet compiled</span>}</div><div style={{ fontSize: 8, color: C.dm, marginTop: 2 }}>{ins.transactions.length > 0 ? `${ins.transactions.length} transactions in 2Y` : "Check SEDI/SEC EDGAR"}</div></div>
             <div style={{ marginBottom: 8 }}><div style={{ fontSize: 7, color: C.dm, textTransform: "uppercase", letterSpacing: 1 }}>Consensus</div><div style={{ fontSize: 13, fontWeight: 700, marginTop: 2 }}>{stock.con}</div></div>
-            {sel === "NXE" && (() => {
+            {(() => {
               if (sedarLoading) {
                 return (
                   <div style={{ marginBottom: 8, padding: "6px 8px", background: "#fdf9f0", borderRadius: 4, border: `1px solid ${C.w}22`, fontSize: 8, color: C.dm }}>
-                    Loading SEDAR sentiment data…
+                    Loading SEDAR+ tone…
                   </div>
                 );
               }
-              if (sedarError || sedarData.timeline.length === 0) {
+              if (sedarError || !sedarRaw || !sedarRaw.timeline || sedarRaw.timeline.length === 0) {
                 return (
-                  <div style={{ marginBottom: 8, padding: "6px 8px", background: "#fdf5f3", borderRadius: 4, border: `1px solid ${C.r}22`, fontSize: 8, color: C.dm }}>
-                    SEDAR sentiment data unavailable.
+                  <div style={{ marginBottom: 8, padding: "6px 8px", background: C.hi, borderRadius: 4, border: `1px solid ${C.bd}`, fontSize: 8, color: C.dm }}>
+                    SEDAR+ tone data not yet loaded.
                   </div>
                 );
               }
-              // Compute composite SEDAR sentiment from latest periodic filings
-              const periodic = sedarData.timeline.filter(t => ["annual_mda","interim_mda","annual_fs","interim_fs","aif"].includes(t.dt)).sort((a,b) => b.p.localeCompare(a.p));
-              const latestMDA = periodic.find(t => t.dt.includes("mda"));
-              const latestFS = periodic.find(t => t.dt.includes("fs"));
-              const latestAIF = periodic.find(t => t.dt === "aif");
+              // Compute composite from latest periodic filings — using FULL key names from new JSON
+              const periodic = sedarRaw.timeline
+                .filter(t => ["annual_mda","interim_mda","annual_fs","interim_fs","aif"].includes(t.doc_type))
+                .sort((a,b) => b.period.localeCompare(a.period));
+              const latestMDA = periodic.find(t => t.doc_type.includes("mda"));
+              const latestFS = periodic.find(t => t.doc_type.includes("fs"));
+              const latestAIF = periodic.find(t => t.doc_type === "aif");
               const scoreSources = [latestMDA, latestFS, latestAIF].filter(Boolean);
-              // Weighted average of composite z-scores (MDA 50%, FS 30%, AIF 20%)
+              if (scoreSources.length === 0) {
+                return (
+                  <div style={{ marginBottom: 8, padding: "6px 8px", background: C.hi, borderRadius: 4, border: `1px solid ${C.bd}`, fontSize: 8, color: C.dm }}>
+                    No periodic filings found for tone analysis.
+                  </div>
+                );
+              }
               const weights = { mda: 0.5, fs: 0.3, aif: 0.2 };
               let wSum = 0, wTotal = 0;
               for (const s of scoreSources) {
-                const w = s.dt.includes("mda") ? weights.mda : s.dt.includes("fs") ? weights.fs : weights.aif;
-                wSum += s.cz * w;
+                const w = s.doc_type.includes("mda") ? weights.mda : s.doc_type.includes("fs") ? weights.fs : weights.aif;
+                const cz = s.z_composite_delta ?? s.composite_delta ?? 0;
+                wSum += cz * w;
                 wTotal += w;
               }
               const compositeZ = wTotal > 0 ? wSum / wTotal : 0;
@@ -471,9 +478,12 @@ export default function App() {
                   </div>
                   <div style={{ fontSize: 7, color: C.dm, marginTop: 2 }}>
                     {scoreSources.map(s => {
-                      const label = s.dt === "aif" ? "AIF" : s.dt.includes("annual") ? "Annual " : "Q" + (s.p.slice(5,7) === "03" ? "1" : s.p.slice(5,7) === "06" ? "2" : s.p.slice(5,7) === "09" ? "3" : "4") + " ";
-                      const typeLabel = s.dt.includes("mda") ? "MD&A" : s.dt.includes("fs") ? "FS" : "AIF";
-                      return `${label}${s.dt !== "aif" ? typeLabel : ""} ${s.p.slice(0,4)}: z=${s.cz > 0 ? "+" : ""}${s.cz.toFixed(1)}`;
+                      const dt = s.doc_type;
+                      const p = s.period;
+                      const cz = s.z_composite_delta ?? s.composite_delta ?? 0;
+                      const label = dt === "aif" ? "AIF" : dt.includes("annual") ? "Annual " : "Q" + (p.slice(5,7) === "03" ? "1" : p.slice(5,7) === "06" ? "2" : p.slice(5,7) === "09" ? "3" : "4") + " ";
+                      const typeLabel = dt.includes("mda") ? "MD&A" : dt.includes("fs") ? "FS" : "AIF";
+                      return `${label}${dt !== "aif" ? typeLabel : ""} ${p.slice(0,4)}: z=${cz > 0 ? "+" : ""}${cz.toFixed(1)}`;
                     }).join(" · ")}
                   </div>
                 </div>
