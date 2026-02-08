@@ -1,13 +1,13 @@
 ---
 layout: default
-title: Blog
-permalink: /blog/
+title: Equity Dashboard
+permalink: /equitydashboard/
 ---
 
 <section class="section">
   <div class="container">
-    <h1>Blog</h1>
-    <p class="subtitle">Thoughts on building, learning, and shipping.</p>
+    <h1>Equity Dashboard</h1>
+    <p class="subtitle">Small-cap signal dashboard and research updates.</p>
 
     <div class="post-list">
       {% for post in site.posts %}
