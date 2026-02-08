@@ -43,15 +43,15 @@ jobs:
           source: ./
           destination: ./_site
 
-      - name: Replace /blog with React build
+      - name: Replace /blog-app with React build
         run: |
           # Jekyll build can leave root-owned / read-only files in _site (container output)
           sudo chown -R $(id -u):$(id -g) ./_site || true
           sudo chmod -R u+rwX ./_site || true
 
-          sudo rm -rf ./_site/blog
-          mkdir -p ./_site/blog
-          cp -R ./blog-app/dist/* ./_site/blog/
+          sudo rm -rf ./_site/blog-app
+          mkdir -p ./_site/blog-app
+          cp -R ./blog-app/dist/* ./_site/blog-app/
           touch ./_site/.nojekyll
 
 
