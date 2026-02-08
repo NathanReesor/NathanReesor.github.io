@@ -1583,20 +1583,21 @@ export default function App() {
       {tab === "data sources" && (<>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
           <Card>
-            <Lbl>Real Data in This Dashboard</Lbl>
+            <Lbl>Data Sources</Lbl>
             {[["NXE Price/Volume", "261 weekly", "Yahoo Finance (CAD)"],
               ["GOLD.TO Price/Volume", "262 weekly", "Yahoo Finance (CAD)"],
               ["TXG Price/Volume", "262 weekly", "Yahoo Finance (CAD)"],
               ["NXE Short Interest", "121 biweekly", "FINRA (NXE on NYSE)"],
               ["GOLD.TO Short Interest", "121 biweekly", "FINRA (GLDG on AMEX)"],
-              ["TXG Short Interest", "✗ Not available", "TSX-only, no FINRA coverage"],
-              ["SI↔Price Correlation", "Precomputed", "Pearson r at 7 lags, both stocks"],
-              ["Insider Transactions", "2Y timeline", "SEDI, Form 4 (NXE + TXG + GOLD.TO)"],
-              ["Catalyst & Outlook", "1–3 month", "Company filings, SEDAR+, press releases (as of Feb 2026)"],
-              ["SEDAR+ Sentiment (NXE)", "137 comparisons", "NLP pipeline: Loughran-McDonald tone × 7 doc types"],
-              ["Shares Outstanding", "As of Feb 2026", "Morningstar/TipRanks (NXE: 654.6M, GLDG: 207.2M)"],
-              ["SI % of Float", "Derived", "SI ÷ (Outstanding − Insiders − Institutions)"],
-              ["CAD Notional Short", "Derived", "SI × Price (all prices in CAD)"],
+              ["TXG Short Interest", "✗ Not available", "TSX-only — requires CIRO via TMX DataLinx"],
+              ["NXE Options Chain", "Feb + Mar expiry", "Yahoo Finance / CBOE"],
+              ["Macro Overlay", "Weekly indexed", "URA, GLD ETFs + all 3 equities (CAD-adjusted)"],
+              ["Insider Transactions", "2Y timeline", "SEDI + Form 4 (all 3 tickers)"],
+              ["SEDAR+ Sentiment (NXE)", "136 comparisons", "NLP pipeline: Loughran-McDonald × 7 doc types"],
+              ["SEDAR+ Sentiment (GOLD.TO)", "138 comparisons", "NLP pipeline: Loughran-McDonald × 7 doc types"],
+              ["SEDAR+ Sentiment (TXG)", "161 comparisons", "NLP pipeline: Loughran-McDonald × 7 doc types"],
+              ["Catalyst & Outlook", "1–3 month", "Company filings, SEDAR+, press releases"],
+              ["Shares Outstanding", "As of Feb 2026", "Morningstar/TipRanks"],
             ].map(([s, n, f], i) => (
               <div key={i} style={{ display: "flex", gap: 6, marginBottom: 5, fontSize: 9 }}>
                 <span style={{ color: s.includes("✗") ? C.r : C.g }}>●</span><span style={{ fontWeight: 700 }}>{s}</span> <span style={{ color: C.dm }}>— {n} · {f}</span>
@@ -1604,24 +1605,24 @@ export default function App() {
             ))}
           </Card>
           <Card>
-            <Lbl>Key Methodology Notes</Lbl>
+            <Lbl>Methodology</Lbl>
             <div style={{ fontSize: 9, lineHeight: 1.8, color: C.dm }}>
               <div style={{ marginBottom: 8 }}>
-                <b style={{ color: C.tx }}>GOLD.TO Insider Data — FPI Limitation:</b>
-                <div style={{ paddingLeft: 8, borderLeft: `2px solid ${C.w}`, margin: "4px 0" }}>GoldMining Inc. is classified as a <b>Foreign Private Issuer (FPI)</b> by the SEC, which exempts it from filing Form 4 insider trading reports. Insider data must be sourced from SEDI (sedi.ca), Canada's insider filing system. Coverage is less comprehensive than US-reported insider activity. Data shown is compiled from available SEDI and public disclosures.</div>
+                <b style={{ color: C.tx }}>SEDAR+ NLP Sentiment:</b>
+                <div style={{ paddingLeft: 8, borderLeft: `2px solid ${C.acc}`, margin: "4px 0" }}>Dictionary-based tone analysis using the Loughran-McDonald financial sentiment lexicon. Measures density of negative, uncertainty, litigious, constraining, and positive language (hits per 10,000 words). Periodic filings (MD&A, FS, AIF) are compared sequentially; news/MCR filings are analyzed as standalone events with z-scores on absolute levels. Z-scores computed within document group to normalize structural differences.</div>
               </div>
               <div style={{ marginBottom: 8 }}>
-                <b style={{ color: C.tx }}>SI % of Float — Estimation:</b>
-                <div style={{ paddingLeft: 8, borderLeft: `2px solid ${C.bl}`, margin: "4px 0" }}>Float is estimated as: Shares Outstanding − Insider Holdings − Institutional Holdings. Insider and institutional percentages from Capital IQ/TipRanks. This is an approximation — actual free float may differ due to lock-ups, restricted shares, and 13F reporting delays.</div>
-              </div>
-              <div style={{ marginBottom: 8 }}>
-                <b style={{ color: C.tx }}>CAD Notional Short Value:</b>
-                <div style={{ paddingLeft: 8, borderLeft: `2px solid ${C.acc}`, margin: "4px 0" }}>All price data (NXE, GOLD.TO, TXG) is denominated in CAD. Notional value = SI share count × latest closing price in CAD. This provides an apples-to-apples comparison of short conviction across securities with different share prices.</div>
-              </div>
-              <div>
                 <b style={{ color: C.tx }}>SI Coverage by Exchange:</b>
                 <div style={{ paddingLeft: 8, borderLeft: `2px solid ${C.g}`, margin: "4px 0" }}><b>FINRA:</b> Covers NYSE, NASDAQ, AMEX. NXE (NYSE) and GLDG/GOLD.TO (AMEX) both covered.</div>
-                <div style={{ paddingLeft: 8, borderLeft: `2px solid ${C.r}`, margin: "4px 0" }}><b>TSX-only:</b> TXG has no US dual-listing. Requires CIRO data via TMX DataLinx.</div>
+                <div style={{ paddingLeft: 8, borderLeft: `2px solid ${C.r}`, margin: "4px 0" }}><b>TSX-only:</b> TXG has no US dual-listing. TSX short interest requires CIRO data via TMX DataLinx subscription.</div>
+              </div>
+              <div style={{ marginBottom: 8 }}>
+                <b style={{ color: C.tx }}>GOLD.TO Insider Data — FPI Limitation:</b>
+                <div style={{ paddingLeft: 8, borderLeft: `2px solid ${C.w}`, margin: "4px 0" }}>GoldMining is classified as a Foreign Private Issuer (FPI) by the SEC, exempt from Form 4 reporting. Insider data sourced from SEDI (sedi.ca). Coverage is less comprehensive than US-reported insider activity.</div>
+              </div>
+              <div>
+                <b style={{ color: C.tx }}>Options Data:</b>
+                <div style={{ paddingLeft: 8, borderLeft: `2px solid ${C.bl}`, margin: "4px 0" }}>NXE only. Options chain data from Yahoo Finance / CBOE. Put/call ratios, max pain, and skew analysis computed from open interest and last trade prices. GOLD.TO and TXG options are too illiquid for meaningful analysis.</div>
               </div>
             </div>
           </Card>
@@ -1630,7 +1631,7 @@ export default function App() {
 
       <div style={{ marginTop: 14, padding: "6px 0", borderTop: `1px solid ${C.bd}`, fontSize: 7, color: C.dm, fontFamily: "'IBM Plex Mono', monospace", display: "flex", justifyContent: "space-between" }}>
         <span>PROOF OF CONCEPT · NOT INVESTMENT ADVICE</span>
-        <span>FINRA SI (NXE 121 + GLDG 121) · YAHOO (262) · SEDI/FORM 4 · SEDAR+ NLP (137) · MORNINGSTAR · FEB 2026</span>
+        <span>FINRA SI · YAHOO · SEDI/FORM 4 · SEDAR+ NLP (NXE 136 + GOLD 138 + TXG 161) · MORNINGSTAR · FEB 2026</span>
       </div>
     </div>
   );
