@@ -842,8 +842,8 @@ export default function SedarSentiment({ rawJson, priceData, ticker, tickerDispl
 
       {isNews ? (
         <>
-          {renderNewsEvents()}
           {renderPriceTone()}
+          {renderNewsEvents()}
         </>
       ) : (
         <>
