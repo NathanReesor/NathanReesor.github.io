@@ -23,7 +23,7 @@ const DOC_GROUPS = {
   periodic: { label:"All Periodic", types:["interim_mda","annual_mda","interim_fs","annual_fs","aif"], combined:true },
   mda:  { label:"MD&A",       types:["interim_mda","annual_mda"] },
   fs:   { label:"Fin. Stmts", types:["interim_fs","annual_fs"] },
-  news: { label:"News/MCR",   types:["news_release","mcr"] },
+  news_mcr: { label:"News/MCR",   types:["news_release","mcr"] },
 };
 
 /* ═══ SHARED UI ═══ */
@@ -235,6 +235,76 @@ export default function SedarSentiment({ rawJson, priceData, ticker, tickerDispl
   // ═══ PRICE × TONE ═══
   const renderPriceTone = () => {
     const prices = priceData || [];
+    if (effGroup === "news_mcr") {
+      const news = data.newsRows || [];
+      if (!news.length) return <Card><div style={{fontSize:10,color:C.dm}}>No news/MCR filings available.</div></Card>;
+
+      const findClosestPrice = (date) => {
+        if (!prices.length) return null;
+        const target = new Date(date);
+        return prices.reduce((best,p) => Math.abs(new Date(p.d)-target)<Math.abs(new Date(best.d)-target)?p:best, prices[0]);
+      };
+      const calcForwardReturn = (date, days) => {
+        const base = findClosestPrice(date);
+        if (!base?.c) return null;
+        const futureDate = new Date(date);
+        futureDate.setDate(futureDate.getDate() + days);
+        const future = findClosestPrice(futureDate);
+        if (!future?.c) return null;
+        return ((future.c - base.c) / base.c) * 100;
+      };
+      const sorted = [...news].sort((a,b) => b.period.localeCompare(a.period));
+      const rows = sorted.map(t => ({
+        ...t,
+        zComposite: t.zev_composite ?? 0,
+        zNeg: t.zev_neg ?? 0,
+        zUnc: t.zev_unc ?? 0,
+        zPos: t.zev_pos ?? 0,
+        r1w: calcForwardReturn(t.period, 7),
+        r4w: calcForwardReturn(t.period, 28),
+        r10w: calcForwardReturn(t.period, 70),
+      }));
+
+      const returnCell = (val) => ({
+        color: val > 0 ? C.g : val < 0 ? C.r : C.dm,
+        text: val == null ? "—" : `${val>0?"+":""}${val.toFixed(1)}%`,
+      });
+
+      return (
+        <Card style={{marginBottom:12}}>
+          <Lbl>News/MCR Event Returns — {tickerDisplay}</Lbl>
+          <div style={{overflowX:"auto",maxHeight:420,overflow:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:9,fontFamily:"'IBM Plex Mono', monospace"}}>
+              <thead><tr style={{borderBottom:`2px solid ${C.bd}`,position:"sticky",top:0,background:C.card}}>
+                {["Date","Doc Type","Composite Z","NEG Z","UNC Z","POS Z","1W","4W","10W"].map(h =>
+                  <th key={h} style={{padding:"5px 6px",textAlign:"left",fontSize:8,color:C.dm,textTransform:"uppercase"}}>{h}</th>
+                )}
+              </tr></thead>
+              <tbody>{rows.map((t,i) => {
+                const r1 = returnCell(t.r1w);
+                const r4 = returnCell(t.r4w);
+                const r10 = returnCell(t.r10w);
+                return (
+                  <tr key={t.id||i} style={{borderBottom:`1px solid ${C.bd}`,background:i%2===0?"transparent":C.hi}}>
+                    <td style={{padding:"4px 6px",fontWeight:700}}>{t.period}</td>
+                    <td style={{padding:"4px 6px"}}>{t.doc_type==="mcr"?"MCR":"News"}</td>
+                    <td style={{padding:"4px 6px",fontWeight:700,color:riskColor(t.zComposite,"composite")}}>{t.zComposite>0?"+":""}{t.zComposite.toFixed(2)}σ</td>
+                    <td style={{padding:"4px 6px",fontWeight:700,color:riskColor(t.zNeg,"neg")}}>{t.zNeg>0?"+":""}{t.zNeg.toFixed(2)}σ</td>
+                    <td style={{padding:"4px 6px",fontWeight:700,color:riskColor(t.zUnc,"unc")}}>{t.zUnc>0?"+":""}{t.zUnc.toFixed(2)}σ</td>
+                    <td style={{padding:"4px 6px",fontWeight:700,color:riskColor(t.zPos,"pos")}}>{t.zPos>0?"+":""}{t.zPos.toFixed(2)}σ</td>
+                    <td style={{padding:"4px 6px",fontWeight:700,color:r1.color}}>{r1.text}</td>
+                    <td style={{padding:"4px 6px",fontWeight:700,color:r4.color}}>{r4.text}</td>
+                    <td style={{padding:"4px 6px",fontWeight:700,color:r10.color}}>{r10.text}</td>
+                  </tr>
+                );
+              })}</tbody>
+            </table>
+          </div>
+          <div style={{fontSize:8,color:C.dm,marginTop:4}}>Forward returns use closest price to filing date and closest price after 1, 4, and 10 weeks.</div>
+        </Card>
+      );
+    }
+
     if (toneMode === "delta") {
       const tonePoints = filtered.map(t => {
         const td = new Date(t.period);
@@ -665,7 +735,7 @@ export default function SedarSentiment({ rawJson, priceData, ticker, tickerDispl
   };
 
   // ═══ MAIN RENDER ═══
-  const isNews = effGroup === "news";
+  const isNews = effGroup === "news_mcr";
   const VIEWS = isNews
     ? [{ key:"newsEvents", label:"Event Analysis" }, { key:"priceTone", label:"Tone Levels" }]
     : [{ key:"priceTone", label:"Price × Tone" }, { key:"filingAnalysis", label:"Filing Analysis" }, { key:"sectionDrilldown", label:"Section Drilldown" }];
