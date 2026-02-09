@@ -264,6 +264,42 @@ export default function SedarSentiment({ rawJson, priceData, ticker, tickerDispl
         r4w: calcForwardReturn(t.period, 28),
         r10w: calcForwardReturn(t.period, 70),
       }));
+      const returnRows = rows.filter(r => r.r1w != null && r.r4w != null && r.r10w != null);
+      const hasSummary = returnRows.length >= 3;
+
+      const avg = (vals) => (vals.length ? vals.reduce((s,x) => s + x, 0) / vals.length : null);
+      const avgReturn = (vals) => {
+        const value = avg(vals);
+        return {
+          value,
+          text: value == null ? "—" : `${value > 0 ? "+" : ""}${value.toFixed(1)}%`,
+          color: value > 0 ? C.g : value < 0 ? C.r : C.dm,
+        };
+      };
+
+      const negBucketAvg = avgReturn(returnRows.filter(r => r.zComposite <= -1).map(r => r.r4w));
+      const posBucketAvg = avgReturn(returnRows.filter(r => r.zComposite >= 1).map(r => r.r4w));
+      const buckets = [
+        { label:"≤ -1.0", filter:(r) => r.zComposite <= -1 },
+        { label:"-1.0 to -0.5", filter:(r) => r.zComposite > -1 && r.zComposite <= -0.5 },
+        { label:"-0.5 to +0.5", filter:(r) => r.zComposite > -0.5 && r.zComposite < 0.5 },
+        { label:"+0.5 to +1.0", filter:(r) => r.zComposite >= 0.5 && r.zComposite < 1 },
+        { label:"≥ +1.0", filter:(r) => r.zComposite >= 1 },
+      ];
+      const bucketStats = buckets.map(b => {
+        const entries = returnRows.filter(b.filter);
+        return {
+          label: b.label,
+          count: entries.length,
+          r1w: avgReturn(entries.map(r => r.r1w)),
+          r4w: avgReturn(entries.map(r => r.r4w)),
+          r10w: avgReturn(entries.map(r => r.r10w)),
+        };
+      });
+      const hitCandidates = returnRows.filter(r => Math.abs(r.zComposite) >= 1);
+      const hitCount = hitCandidates.filter(r => r.r4w > 0).length;
+      const hitTotal = hitCandidates.length;
+      const hitRate = hitTotal ? (hitCount / hitTotal) * 100 : 0;
 
       const returnCell = (val) => ({
         color: val > 0 ? C.g : val < 0 ? C.r : C.dm,
@@ -273,6 +309,37 @@ export default function SedarSentiment({ rawJson, priceData, ticker, tickerDispl
       return (
         <Card style={{marginBottom:12}}>
           <Lbl>News/MCR Event Returns — {tickerDisplay}</Lbl>
+          {hasSummary && (
+            <div style={{marginBottom:10}}>
+              <div style={{display:"flex",gap:8,marginBottom:8,flexWrap:"wrap"}}>
+                <StatBox l="Avg 4w Return (Z ≤ -1)" v={negBucketAvg.text} c={negBucketAvg.color} />
+                <StatBox l="Avg 4w Return (Z ≥ +1)" v={posBucketAvg.text} c={posBucketAvg.color} />
+              </div>
+              <div style={{overflowX:"auto",marginBottom:6}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:9,fontFamily:"'IBM Plex Mono', monospace"}}>
+                  <thead><tr style={{borderBottom:`2px solid ${C.bd}`}}>
+                    {["Z Bucket","Count","Avg 1W","Avg 4W","Avg 10W"].map(h =>
+                      <th key={h} style={{padding:"5px 6px",textAlign:"left",fontSize:8,color:C.dm,textTransform:"uppercase"}}>{h}</th>
+                    )}
+                  </tr></thead>
+                  <tbody>
+                    {bucketStats.map((b,i) => (
+                      <tr key={b.label} style={{borderBottom:`1px solid ${C.bd}`,background:i%2===0?"transparent":C.hi}}>
+                        <td style={{padding:"4px 6px",fontWeight:700}}>{b.label}</td>
+                        <td style={{padding:"4px 6px",color:C.dm}}>{b.count}</td>
+                        <td style={{padding:"4px 6px",fontWeight:700,color:b.r1w.color}}>{b.r1w.text}</td>
+                        <td style={{padding:"4px 6px",fontWeight:700,color:b.r4w.color}}>{b.r4w.text}</td>
+                        <td style={{padding:"4px 6px",fontWeight:700,color:b.r10w.color}}>{b.r10w.text}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{fontSize:9,color:C.dm}}>
+                {hitCount} of {hitTotal} filings with |Z| ≥ 1 had positive 4w returns ({hitRate.toFixed(0)}% hit rate)
+              </div>
+            </div>
+          )}
           <div style={{overflowX:"auto",maxHeight:420,overflow:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:9,fontFamily:"'IBM Plex Mono', monospace"}}>
               <thead><tr style={{borderBottom:`2px solid ${C.bd}`,position:"sticky",top:0,background:C.card}}>
@@ -737,9 +804,9 @@ export default function SedarSentiment({ rawJson, priceData, ticker, tickerDispl
   // ═══ MAIN RENDER ═══
   const isNews = effGroup === "news_mcr";
   const VIEWS = isNews
-    ? [{ key:"newsEvents", label:"Event Analysis" }, { key:"priceTone", label:"Tone Levels" }]
+    ? []
     : [{ key:"priceTone", label:"Price × Tone" }, { key:"filingAnalysis", label:"Filing Analysis" }, { key:"sectionDrilldown", label:"Section Drilldown" }];
-  const effView = VIEWS.find(v=>v.key===view) ? view : VIEWS[0].key;
+  const effView = VIEWS.find(v=>v.key===view) ? view : VIEWS[0]?.key;
 
   return (
     <div>
@@ -761,20 +828,30 @@ export default function SedarSentiment({ rawJson, priceData, ticker, tickerDispl
         <Pill label="COMP" active={metric==="composite"} onClick={()=>setMetric("composite")} />
         {CATS.map(m => <Pill key={m} label={CAT_META[m].short} active={metric===m} onClick={()=>setMetric(m)} color={metric===m?CAT_META[m].color:undefined} />)}
       </div>
-      <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
-        <span style={{fontSize:9,fontWeight:700,color:C.dm}}>VIEW:</span>
-        {VIEWS.map(v => <Pill key={v.key} label={v.label} active={effView===v.key} onClick={()=>setView(v.key)} />)}
-        {effView==="priceTone" && !isNews && <>
-          <span style={{fontSize:9,fontWeight:700,color:C.dm,marginLeft:8}}>MODE:</span>
-          <Pill label="Delta" active={toneMode==="delta"} onClick={()=>setToneMode("delta")} />
-          <Pill label="Level" active={toneMode==="level"} onClick={()=>setToneMode("level")} />
-        </>}
-      </div>
+      {!isNews && (
+        <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
+          <span style={{fontSize:9,fontWeight:700,color:C.dm}}>VIEW:</span>
+          {VIEWS.map(v => <Pill key={v.key} label={v.label} active={effView===v.key} onClick={()=>setView(v.key)} />)}
+          {effView==="priceTone" && <>
+            <span style={{fontSize:9,fontWeight:700,color:C.dm,marginLeft:8}}>MODE:</span>
+            <Pill label="Delta" active={toneMode==="delta"} onClick={()=>setToneMode("delta")} />
+            <Pill label="Level" active={toneMode==="level"} onClick={()=>setToneMode("level")} />
+          </>}
+        </div>
+      )}
 
-      {effView==="priceTone" && renderPriceTone()}
-      {effView==="filingAnalysis" && renderFilingAnalysis()}
-      {effView==="sectionDrilldown" && renderSectionDrilldown()}
-      {effView==="newsEvents" && renderNewsEvents()}
+      {isNews ? (
+        <>
+          {renderNewsEvents()}
+          {renderPriceTone()}
+        </>
+      ) : (
+        <>
+          {effView==="priceTone" && renderPriceTone()}
+          {effView==="filingAnalysis" && renderFilingAnalysis()}
+          {effView==="sectionDrilldown" && renderSectionDrilldown()}
+        </>
+      )}
     </div>
   );
 }
