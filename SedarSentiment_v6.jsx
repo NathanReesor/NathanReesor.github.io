@@ -475,22 +475,22 @@ export default function SedarSentiment({ rawJson, priceData, ticker, tickerDispl
         <Pill label="A-Z" active={hmSort==="alpha"} onClick={()=>setHmSort("alpha")} />
       </div>
       <Card style={{marginBottom:12,padding:8,overflowX:"auto"}}>
-        <table style={{borderCollapse:"collapse",width:"100%",fontSize:8,fontFamily:"'IBM Plex Mono', monospace"}}>
+        <table style={{borderCollapse:"collapse",width:"100%",fontSize:11,fontFamily:"'IBM Plex Mono', monospace"}}>
           <thead><tr>
-            <th style={{padding:"4px 6px",textAlign:"left",fontSize:7,color:C.dm,position:"sticky",left:0,background:C.card,zIndex:1,minWidth:130}}>Section</th>
-            {periods.map(p => <th key={p} style={{padding:"4px 2px",textAlign:"center",fontSize:7,color:C.dm,minWidth:38,writingMode:periods.length>10?"vertical-rl":undefined}}>{fmtTick(p)}</th>)}
+            <th style={{padding:"6px 8px",textAlign:"left",fontSize:11,color:C.dm,position:"sticky",left:0,background:C.card,zIndex:1,minWidth:140}}>Section</th>
+            {periods.map(p => <th key={p} style={{padding:"6px 4px",textAlign:"center",fontSize:10,color:C.dm,minWidth:46,writingMode:periods.length>10?"vertical-rl":undefined}}>{fmtTick(p)}</th>)}
           </tr></thead>
           <tbody>{sortedSec.map(sec =>
             <tr key={sec}>
-              <td style={{padding:"3px 6px",fontWeight:600,fontSize:7,position:"sticky",left:0,background:C.card,zIndex:1,borderRight:`1px solid ${C.bd}`}}>{fmtSection(sec)}</td>
+              <td style={{padding:"6px 8px",fontWeight:600,fontSize:11,position:"sticky",left:0,background:C.card,zIndex:1,borderRight:`1px solid ${C.bd}`}}>{fmtSection(sec)}</td>
               {periods.map(p => {
                 const key=`${sec}__${p}`, cell=lookup[key], val=cell?.[hmField]??null, isExp=expandedCell===key;
-                if (val===null) return <td key={p} style={{padding:"2px",background:"#f9f9f7",textAlign:"center",border:`1px solid ${C.bd}22`}}>·</td>;
+                if (val===null) return <td key={p} style={{padding:"6px 4px",background:"#f9f9f7",textAlign:"center",border:`1px solid ${C.bd}22`,fontSize:11}}>·</td>;
                 const intensity=Math.min(Math.abs(val)/(maxVal||1),1);
                 const bg = val>0 ? `rgba(194,69,37,${0.06+intensity*0.5})` : val<0 ? `rgba(26,107,58,${0.06+intensity*0.5})` : "#fafaf8";
                 return (
-                  <td key={p} onClick={()=>setExpandedCell(isExp?null:key)} style={{padding:"2px",textAlign:"center",background:bg,border:`1px solid ${C.bd}22`,
-                    cursor:"pointer",fontWeight:intensity>0.3?700:400,color:intensity>0.4?"#fff":C.tx,fontSize:7,outline:isExp?`2px solid ${C.tx}`:"none"}}
+                  <td key={p} onClick={()=>setExpandedCell(isExp?null:key)} style={{padding:"6px 4px",textAlign:"center",background:bg,border:`1px solid ${C.bd}22`,
+                    cursor:"pointer",fontWeight:intensity>0.3?700:400,color:intensity>0.4?"#fff":C.tx,fontSize:11,outline:isExp?`2px solid ${C.tx}`:"none"}}
                     title={`${fmtSection(sec)} · ${p}\nΔ: ${val>0?"+":""}${val.toFixed(1)}\nWords: ${cell.curr_words?.toLocaleString()}`}>
                     {val>0?"+":""}{Math.abs(val)>=10?val.toFixed(0):val.toFixed(1)}
                   </td>
