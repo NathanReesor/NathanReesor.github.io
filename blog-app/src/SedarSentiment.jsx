@@ -250,6 +250,9 @@ export default function SedarSentiment({ rawJson, priceData, ticker, tickerDispl
       for (const p of [...tonePoints,...priceLine]) { if (!byDate[p.fullPeriod]) byDate[p.fullPeriod]={fullPeriod:p.fullPeriod}; Object.assign(byDate[p.fullPeriod],p); }
       const combined = Object.values(byDate).sort((a,b)=>a.fullPeriod.localeCompare(b.fullPeriod));
       const mxD = Math.max(...combined.filter(d=>d.delta!=null).map(d=>Math.abs(d.delta)),1);
+      const mxD_r = Math.ceil(mxD * 1.3);
+      const leftTicks = [];
+      for (let i = -mxD_r; i <= mxD_r; i++) leftTicks.push(i);
       const pMin = prices.length ? Number((Math.min(...prices.map(p=>p.c))*0.9).toFixed(2)) : 0;
       const pMax = prices.length ? Number((Math.max(...prices.map(p=>p.c))*1.1).toFixed(2)) : 10;
 
@@ -261,8 +264,8 @@ export default function SedarSentiment({ rawJson, priceData, ticker, tickerDispl
               <ComposedChart data={combined} margin={{top:10,right:50,left:10,bottom:5}}>
                 <CartesianGrid strokeDasharray="3 3" stroke={C.bd} opacity={0.4} />
                 <XAxis dataKey="fullPeriod" tickFormatter={fmtTick} tick={{fontSize:8,fill:C.dm}} interval="preserveStartEnd" />
-                <YAxis yAxisId="left" tick={{fontSize:8,fill:C.dm}} domain={[-mxD*1.3,mxD*1.3]} label={{value:"Δ hits/10K",angle:-90,position:"insideLeft",style:{fontSize:8,fill:C.dm}}} />
-                <YAxis yAxisId="right" orientation="right" tick={{fontSize:8,fill:C.bl}} domain={[pMin,pMax]} tickFormatter={fmtPrice} label={{value:"C$",angle:90,position:"insideRight",style:{fontSize:8,fill:C.bl}}} />
+                <YAxis yAxisId="left" tick={{fontSize:8,fill:C.dm}} domain={[-mxD_r,mxD_r]} ticks={leftTicks} tickFormatter={v => v.toFixed(0)} label={{value:"Δ hits/10K",angle:-90,position:"insideLeft",style:{fontSize:8,fill:C.dm}}} />
+                <YAxis yAxisId="right" orientation="right" tick={{fontSize:8,fill:C.bl}} domain={[pMin,pMax]} tickFormatter={v => "$"+Math.round(v)} label={{value:"C$",angle:90,position:"insideRight",style:{fontSize:8,fill:C.bl}}} />
                 <Tooltip content={<ResearchTooltip metric={metricCat} />} />
                 <ReferenceLine yAxisId="left" y={0} stroke={C.tx} strokeDasharray="4 4" opacity={0.3} />
                 <Bar yAxisId="left" dataKey="delta" maxBarSize={16}>
@@ -291,6 +294,10 @@ export default function SedarSentiment({ rawJson, priceData, ticker, tickerDispl
       return row;
     });
     const pRange = priceData?.length ? [Number((Math.min(...priceData.map(p=>p.c))*0.9).toFixed(2)), Number((Math.max(...priceData.map(p=>p.c))*1.1).toFixed(2))] : [0,10];
+    const maxLevel = Math.max(1, ...chartData.flatMap(row => levelCats.map(cat => Math.abs(row[cat] ?? 0))));
+    const maxLevel_r = Math.ceil(maxLevel * 1.3);
+    const levelTicks = [];
+    for (let i = 0; i <= maxLevel_r; i++) levelTicks.push(i);
 
     return (
       <Card style={{marginBottom:12}}>
@@ -300,8 +307,8 @@ export default function SedarSentiment({ rawJson, priceData, ticker, tickerDispl
             <ComposedChart data={chartData} margin={{top:10,right:50,left:10,bottom:5}}>
               <CartesianGrid strokeDasharray="3 3" stroke={C.bd} opacity={0.4} />
               <XAxis dataKey="fullPeriod" tickFormatter={fmtTick} tick={{fontSize:8,fill:C.dm}} />
-              <YAxis yAxisId="left" tick={{fontSize:8,fill:C.dm}} label={{value:"hits / 10K words",angle:-90,position:"insideLeft",style:{fontSize:8,fill:C.dm}}} />
-              <YAxis yAxisId="right" orientation="right" tick={{fontSize:8,fill:C.bl}} domain={pRange} tickFormatter={fmtPrice} label={{value:"C$",angle:90,position:"insideRight",style:{fontSize:8,fill:C.bl}}} />
+              <YAxis yAxisId="left" tick={{fontSize:8,fill:C.dm}} domain={[0,maxLevel_r]} ticks={levelTicks} tickFormatter={v => v.toFixed(0)} label={{value:"hits / 10K words",angle:-90,position:"insideLeft",style:{fontSize:8,fill:C.dm}}} />
+              <YAxis yAxisId="right" orientation="right" tick={{fontSize:8,fill:C.bl}} domain={pRange} tickFormatter={v => "$"+Math.round(v)} label={{value:"C$",angle:90,position:"insideRight",style:{fontSize:8,fill:C.bl}}} />
               <Tooltip contentStyle={{background:C.card,border:`1px solid ${C.bd}`,borderRadius:4,fontSize:9}} formatter={(val,name)=>name==="price"?[`C$${fmtNum(val,2)}`,"Price"]:[`${fmtNum(val)} /10K`,CAT_META[name]?.label||name]} labelFormatter={fmtTick} />
               {levelCats.map(cat => <Line key={cat} yAxisId="left" type="monotone" dataKey={cat} stroke={CAT_META[cat].color} strokeWidth={2}
                 dot={props => { const {cx,cy,payload}=props; return payload?.isAnnual ? <rect x={cx-3} y={cy-3} width={6} height={6} fill={CAT_META[cat].color} stroke={C.tx} strokeWidth={1} /> : <circle cx={cx} cy={cy} r={3} fill={CAT_META[cat].color} strokeWidth={0} />; }}
