@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Page not found</title>
+    <script>
+      (function () {
+        var base = "/blog-app/";
+        var path = window.location.pathname || "/";
+
+        if (path.startsWith(base) && path !== base) {
+          var route = path.slice(base.length);
+          var target =
+            base +
+            "?p=" +
+            encodeURIComponent(route) +
+            (window.location.search ? "&q=" + encodeURIComponent(window.location.search.slice(1)) : "") +
+            (window.location.hash ? "&h=" + encodeURIComponent(window.location.hash.slice(1)) : "");
+          window.location.replace(target);
+          return;
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <h1>404</h1>
+    <p>Page not found.</p>
+  </body>
+</html>
