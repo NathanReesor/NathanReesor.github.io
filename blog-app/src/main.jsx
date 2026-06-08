@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
+import HomePage from "./pages/HomePage.jsx";
 import OpexDashboard from "./pages/OpexDashboard.jsx";
 import "./index.css";
 
@@ -32,12 +33,20 @@ function restoreGithubPagesRoute() {
 
 restoreGithubPagesRoute();
 
+const normalizedBase = normalizeBase(base);
 const path = window.location.pathname;
-const opexPath = `${normalizeBase(base)}opex`;
-const isOpexRoute = path === opexPath || path === `${opexPath}/`;
+const relativePath = path.startsWith(normalizedBase)
+  ? path.slice(normalizedBase.length).replace(/\/$/, "")
+  : path.replace(/^\/+|\/+$/g, "");
+
+function selectPage() {
+  if (relativePath === "opex") return <OpexDashboard />;
+  if (relativePath === "equitydashboard" || relativePath === "research-dash") return <App />;
+  return <HomePage />;
+}
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    {isOpexRoute ? <OpexDashboard /> : <App />}
+    {selectPage()}
   </React.StrictMode>
 );
