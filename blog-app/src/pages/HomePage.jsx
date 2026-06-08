@@ -7,22 +7,15 @@ const projects = [
     title: "OPEX + market regime dashboard",
     href: `${import.meta.env.BASE_URL}opex`,
     description:
-      "Tracks SPX options-expiration weeks, market returns, and regime signals. Next step is adding scheduled market-data updates and cleaner live indicators.",
-    tag: "Market structure",
-  },
-  {
-    title: "Issuer filing change tracker",
-    href: `${import.meta.env.BASE_URL}equitydashboard`,
-    description:
-      "Compares issuer filings, price data, short-interest data, and event returns for selected mining names. Useful as a research workflow, not a prediction engine.",
-    tag: "Investment research",
+      "A work-in-progress tool for tracking options-expiration weeks, broad market prices, and risk-regime signals. The goal is to turn it into a clean dashboard that answers one question: what kind of market setup are we heading into around OPEX?",
+    tag: "Current build",
   },
   {
     title: "BTC correlation regime monitor",
     href: null,
     description:
-      "Work in progress: BTC versus equities, bonds, and gold using short-term and one-year rolling correlations.",
-    tag: "Portfolio analytics",
+      "A planned research page comparing BTC against equities, bonds, and gold using short-term and one-year rolling correlations. The goal is to test whether BTC is trading like risk-on tech, a diversifier, or something independent across regimes.",
+    tag: "Next project",
   },
 ];
 
@@ -177,7 +170,6 @@ export default function HomePage() {
           <div style={styles.navName}>Nathan Reesor</div>
           <div style={styles.navLinks}>
             <a style={styles.link} href={`${import.meta.env.BASE_URL}opex`}>OPEX dashboard</a>
-            <a style={styles.link} href={`${import.meta.env.BASE_URL}equitydashboard`}>Research dashboard</a>
             <a style={styles.link} href={`mailto:${email}`}>Email</a>
           </div>
         </nav>
@@ -187,7 +179,7 @@ export default function HomePage() {
           <h1 style={styles.h1}>Practical market research tools, built for real portfolio questions.</h1>
           <p style={styles.lead}>
             I am a finance graduate focused on investment research, market structure, and data-driven portfolio tools.
-            This site contains selected dashboards, research workflows, and projects I am building in public.
+            This site is being rebuilt around fewer, better projects instead of a pile of stale dashboards.
           </p>
 
           <div style={styles.chips}>
@@ -198,7 +190,7 @@ export default function HomePage() {
           </div>
 
           <div style={styles.ctas}>
-            <a style={styles.primary} href={`${import.meta.env.BASE_URL}opex`}>View OPEX dashboard</a>
+            <a style={styles.primary} href={`${import.meta.env.BASE_URL}opex`}>View current build</a>
             <a style={styles.secondary} href={`mailto:${email}`}>Contact: {email}</a>
             <a style={styles.secondary} href={linkedin} target="_blank" rel="noreferrer">LinkedIn</a>
             <a style={styles.secondary} href={github} target="_blank" rel="noreferrer">GitHub</a>
@@ -206,7 +198,7 @@ export default function HomePage() {
         </section>
 
         <section>
-          <div style={styles.sectionTitle}>Selected projects</div>
+          <div style={styles.sectionTitle}>Current focus</div>
           <div style={styles.grid}>
             {projects.map((project) => (
               <article key={project.title} style={styles.card}>
@@ -224,7 +216,7 @@ export default function HomePage() {
         </section>
 
         <footer style={styles.footer}>
-          Built as a working portfolio, not a static resume page. Current priority: turn the OPEX dashboard into a cleaner market-regime tool with scheduled data updates.
+          Current priority: turn the OPEX dashboard into a cleaner market-regime tool with scheduled data updates, then build the BTC correlation monitor from scratch.
         </footer>
       </div>
     </main>
